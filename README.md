@@ -25,8 +25,6 @@ Eng A Lon via NTH HEL to Kie
 
 ## Examples
 
-Currently is able to do the following:
-
 ```bash
 $ # Initialize board and state, this writes two files, board.txt and state.txt
 $ diplo-exe --init
@@ -42,7 +40,7 @@ Bre, occupied by France Fleet
 ...
 
 
-$ # Validate orders w.r.t. board.txt and state.txt
+$ # Validate orders w.r.t. board.txt and state.txt - prints the orders back if they are all valid
 $ head orders.txt
 Aus A Vie-Gal
 Aus A Bud supports (Aus A Vie-Gal)
@@ -57,7 +55,7 @@ Ger F Kie-Den
 Ger A Ber-Kie
 ...
 
-$ # Typo in the unit type, a Fleet cannot be in Vienna
+$ # Typo in the unit type, a fleet cannot be in Vienna
 $ cat orders2.txt
 Aus F Vie-Gal
 $ diplo-exe --orders orders2.txt
