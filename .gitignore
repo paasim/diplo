@@ -1,0 +1,8 @@
+.stack-work/
+diplo.cabal
+*~
+board.txt
+state.txt
+orders.txt
+stack.yaml.lock
+*.swp

@@ -1,0 +1,51 @@
+name:                diplo
+version:             0.1.0.0
+github:              "paasim/diplo"
+license:             BSD3
+author:              "Markus Paasiniemi"
+maintainer:          "paasim@iki.fi"
+copyright:           "2020 Markus Paasiniemi"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/paasim/diplo#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- trifecta
+- parsers
+- rio
+
+library:
+  source-dirs: src
+
+executables:
+  diplo-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - diplo
+
+tests:
+  diplo-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - diplo
