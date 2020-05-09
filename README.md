@@ -55,17 +55,11 @@ Ger F Kie-Den
 Ger A Ber-Kie
 ...
 
-$ # Typo in the unit type, a fleet cannot be in Vienna
+$ # Typo in the unit/space, the only fleet Austria has is at Tri
 $ cat orders2.txt
 Aus F Vie-Gal
 $ diplo-exe --orders orders2.txt
-ErrInfo {_errDoc = orders2.txt:1:7: error: expected: "ADR", "AEG", "Alb", "Ank", "Apu", "Arm",
-"BAL", "BAR", "BLA", "BOT", "Bel", "Ber", "Bre", "BulEC", "BulSC", "Cly",
-"Con", "Den", "EAS", "ENG", "Edi", "Fin", "Gas", "Gre", "HEL", "Hol", "ION",
-"IRI", "Kie", "LYO", "Lon", "Lvn", "Lvp", "MAO", "Mar", "NAO", "NTH", "NWG",
-"Naf", "Nap", "Nwy", "Pic", "Pie", "Por", "Pru", "Rom", "Rum", "SKA", "Sev",
-"Smy", "SpaNC", "SpaSC", "StpNC", "StpSC", "Swe", "Syr", "TYS", "Tri",
-"Tun", "Tus", "Ven", "WES", "Wal", "Yor"
+ErrInfo {_errDoc = orders2.txt:1:7: error: expected: "Tri"
 1 | Aus F Vie-Gal
   |       ^       , _errDeltas = [Directed "orders2.txt" 0 6 6 6]}
 
@@ -77,13 +71,6 @@ ErrInfo {_errDoc = orders3.txt:1:10: error: expected: " convoys ", " holds", " s
     " via ", "-"
 1 | Aus F Tri hlds
   |          ^     , _errDeltas = [Directed "orders3.txt" 0 9 9 9]}
-
-$ # Trying to issue an order for a unit that does not occupy the given space
-$ cat orders4.txt
-Eng A Ank holds
-$ diplo-exe --orders orders4.txt
-Validation errors:
-Unit 'England Army' does not occupy 'Ank, Coast'.
 ```
 
 ## Todo

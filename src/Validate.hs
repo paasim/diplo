@@ -17,29 +17,18 @@ import qualified RIO.Map as M ( lookup )
 import qualified RIO.Set as S ( empty, insert, member )
 
 -- Validation after parsing
-validateOccupier :: GameState -> Unit -> Space -> Validated Space
-validateOccupier gs u s = case M.lookup s (occupiers gs) == Just u of
-  True  -> Valid s
-  False -> ValidationError $ "Unit '" ++ show u ++ "' does not occupy '" ++ show s ++ "'."
-
 validateOccupierType :: GameState -> UnitType -> Space -> Validated Space
 validateOccupierType gs ut s = case fmap ((== ut) . unitType) . M.lookup s $ (occupiers gs) of
   (Just True) -> Valid s
   _ -> ValidationError $ "Space '" ++ show s ++ "' is not occupied by a unit of type '" ++ show ut ++ "'."
 
-validateOrderData :: GameState -> Unit -> Space -> OrderData -> Validated OrderData
-validateOrderData gs u s Hold = Valid $ Hold
-validateOrderData gs u s (Attack s2) = Valid $ Attack s2
-validateOrderData gs u s (SuppHold u2 s2) = SuppHold u2 <$> validateOccupier gs u2 s2
-validateOrderData gs u s (SuppAttack u2 s2 s3) = SuppAttack u2 <$> validateOccupier gs u2 s2 <*> pure s3
-validateOrderData gs u s (Convoy u2 s2 s3) = Convoy u2 <$> validateOccupier gs u2 s2 <*> pure s3
-validateOrderData gs u s (AttackViaConvoy cp) = do
-  toListChecker (validateOccupierType gs Fleet) . NE.toList . cpVia $ cp
-  AttackViaConvoy <$> cpWithoutDuplicates s cp -- this should be done at the parsing stage
-
 validateOrder :: GameState -> Order -> Validated Order
-validateOrder gs (Order oUnit oSpc oData) =
-  Order oUnit <$> validateOccupier gs oUnit oSpc <*> validateOrderData gs oUnit oSpc oData
+validateOrder gs (Order oUnit oSpc oData) = case oData of
+  (AttackViaConvoy cp) -> do
+    toListChecker (validateOccupierType gs Fleet) . NE.toList . cpVia $ cp
+    cpWithoutDuplicates oSpc cp -- this should be done at the parsing stage
+    return $ Order oUnit oSpc (AttackViaConvoy cp)
+  validOdata           -> Valid $ Order oUnit oSpc validOdata
 
 validateOrderUniqueness :: Set (Unit, Space) -> [Order] -> Validated [Order]
 validateOrderUniqueness _ [] = Valid []

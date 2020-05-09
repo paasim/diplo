@@ -70,6 +70,6 @@ parseAndValidateOrders fn = printValidatedTList $
 -- mapped to string to print list of orders in the 
 parseAndValidateOrders' :: String -> Board -> GameState -> ValidatedT IO [Order]
 parseAndValidateOrders' fn board state = do
-  orders <- ValidatedT $ parseValidatedFromFile (parseOrders board) fn 
+  orders <- ValidatedT $ parseValidatedFromFile (parseOrders board state) fn
   ValidatedT . return. (validateOrders state) $ orders
 

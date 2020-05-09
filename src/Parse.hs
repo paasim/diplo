@@ -16,6 +16,7 @@ import StateDefs
 import Errors
 import RIO
 import qualified RIO.Set as S ( filter, fromList, member, null, singleton, toList )
+import qualified RIO.Map as M ( filter, keys )
 import qualified RIO.NonEmpty as NE ( last )
 import Text.Trifecta 
 import Text.Trifecta.Parser
@@ -116,17 +117,17 @@ anyRouteFilter spc' b = SpaceFilter $ \spc -> S.member (Route spc' spc BothUnits
 parseSpaceWith :: SpaceFilter -> Board -> Parser Space
 parseSpaceWith (SpaceFilter f) = choice . fmap spaceToSpaceNameParser . S.toList . S.filter f . boardSpaces
 
-parseUnitAndSpaceWith :: (Parser Unit) -> Board -> Parser (Unit, Space)
-parseUnitAndSpaceWith up b = do
+parseUnitAndSpaceWith :: (Parser Unit) -> Board -> GameState -> Parser (Unit, Space)
+parseUnitAndSpaceWith up b gs = do
   unit <- withSpace up
-  spc <- parseSpaceWith (unitTypeFilter (unitType unit)) b
+  spc <- choice . fmap spaceToSpaceNameParser . M.keys . M.filter (== unit) . occupiers $ gs
   return (unit, spc)
 
-parseHold :: Board -> Unit -> Space -> Parser OrderData
-parseHold b unit spc = string " holds" *> return Hold
+parseHold :: Board -> GameState -> Unit -> Space -> Parser OrderData
+parseHold b gs unit spc = string " holds" *> return Hold
 
-parseAttack :: Board -> Unit -> Space -> Parser OrderData
-parseAttack b attacker spcFrom = do
+parseAttack :: Board -> GameState -> Unit -> Space -> Parser OrderData
+parseAttack b gs attacker spcFrom = do
   string " to " <|> string "-"
   spcTo <- parseSpaceWith (routeFilter spcFrom (routeForUnitType (unitType attacker)) b) b
   return $ Attack spcTo
@@ -138,8 +139,8 @@ parseVias b viaPrev = do
     Nothing        -> return []
     Just (viaNext) -> ((:) viaNext) <$> parseVias b viaNext
 
-parseAttackViaConvoy :: Board -> Unit -> Space -> Parser OrderData
-parseAttackViaConvoy b attacker spcFrom = do
+parseAttackViaConvoy :: Board -> GameState -> Unit -> Space -> Parser OrderData
+parseAttackViaConvoy b gs attacker spcFrom = do
   string " via "
   spcVia <- withSpace $ parseSpaceWith (routeFilter spcFrom (/= ArmyOnly) b) b
   spcVias <- parseVias b spcVia
@@ -147,10 +148,10 @@ parseAttackViaConvoy b attacker spcFrom = do
   spcTo <- parseSpaceWith (routeFilter (NE.last $ spcVia :| spcVias) (/= ArmyOnly) b) b
   return $ AttackViaConvoy (ConvoyPath (spcVia :| spcVias) spcTo)
 
-parseConvoy :: Board -> Unit -> Space -> Parser OrderData
-parseConvoy b convoyer convoyerSpace = do
+parseConvoy :: Board -> GameState -> Unit -> Space -> Parser OrderData
+parseConvoy b gs convoyer convoyerSpace = do
   string " convoys "
-  (convoyee, convoyeeFrom) <- parseUnitAndSpaceWith (parseSpecifiedUnit Army) b
+  (convoyee, convoyeeFrom) <- parseUnitAndSpaceWith (parseSpecifiedUnit Army) b gs
   string " to "
   convoyeeTo <- parseSpaceWith (unitTypeFilter Army) b
   return $ Convoy convoyee convoyeeFrom convoyeeTo
@@ -168,24 +169,25 @@ parseSuppHold b supporter supporterSpace holder holdAt = do
     then string " holds" >> return (SuppHold holder holdAt)
     else unexpected $ "No route between '" ++ show supporterSpace ++ "' and '" ++ show holdAt ++ "'"
 
-parseSupport :: Board -> Unit -> Space -> Parser OrderData
-parseSupport b supporter supporterSpace = do
+parseSupport :: Board -> GameState -> Unit -> Space -> Parser OrderData
+parseSupport b gs supporter supporterSpace = do
   string " supports ("
-  (supportee, supporteeSpace) <- parseUnitAndSpaceWith parseAnyUnit b
+  (supportee, supporteeSpace) <- parseUnitAndSpaceWith parseAnyUnit b gs
   choice [ parseSuppHold   b supporter supporterSpace supportee supporteeSpace
          , parseSuppAttack b supporter supporterSpace supportee supporteeSpace] <* char ')'
 
-parseOrderData board unit spc = choice . fmap (\parser -> parser board unit spc)
+parseOrderData :: Board -> GameState -> Unit -> Space -> Parser OrderData
+parseOrderData board gs unit spc = choice . fmap (\parser -> parser board gs unit spc)
   $ [parseHold, parseAttack, parseSupport, parseConvoy, parseAttackViaConvoy]
 
-parseOrder :: Board -> Parser Order
-parseOrder b = do
-  (unit, spc) <- parseUnitAndSpaceWith parseAnyUnit b
-  orderData <- parseOrderData b unit spc
+parseOrder :: Board -> GameState -> Parser Order
+parseOrder b gs = do
+  (unit, spc) <- parseUnitAndSpaceWith parseAnyUnit b gs
+  orderData <- parseOrderData b gs unit spc
   return $ Order unit spc orderData
 
-parseOrders :: Board -> Parser [Order]
-parseOrders b = sepEndBy1 (parseOrder b) newline <* eof
+parseOrders :: Board -> GameState -> Parser [Order]
+parseOrders b gs = sepEndBy1 (parseOrder b gs) newline <* eof
 
 -- board
 parseNewSpace :: Parser (Space, Bool)
