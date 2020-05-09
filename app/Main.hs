@@ -1,14 +1,14 @@
 --{-# LANGUAGE NoImplicitPrelude #-}
 module Main where
 
-import Examples 
-import Parse
-import BoardDefs
-import StateDefs
+import InitialData 
+import Board
+import BState
 import Orders
+import Parse
+import Validate
 import Errors
 import Utils
-import Validate
 import RIO.List ( intercalate )
 import System.Environment
 
@@ -32,8 +32,8 @@ handleArgs _               pn = putStrLn $
 
 initBoardAndState :: IO ()
 initBoardAndState = do
-  writeFile "board.txt" (show testBoard)
-  writeFile "state.txt" (show testState)
+  writeFile "board.txt" (show initialBoard)
+  writeFile "state.txt" (show initialState)
 
 printValidatedT :: Show a => ValidatedT IO a -> IO ()
 printValidatedT (ValidatedT ioa) = ioa >>= print
@@ -53,11 +53,11 @@ parseAndValidateBoard' fn = do
 parseAndValidateBoard :: String -> IO ()
 parseAndValidateBoard = printValidatedT . parseAndValidateBoard'
 
-parseAndValidateState' :: String -> Board -> ValidatedT IO GameState
+parseAndValidateState' :: String -> Board -> ValidatedT IO BState
 parseAndValidateState' fn board = do
   board <- parseAndValidateBoard' "board.txt"
   gameStateData <- ValidatedT $ parseValidatedFromFile (parseStateData board) fn
-  ValidatedT . return $ uncurry4 (mkGameState board) gameStateData
+  ValidatedT . return $ uncurry4 (mkBState board) gameStateData
 
 parseAndValidateState :: String -> IO ()
 parseAndValidateState fn = printValidatedT $ parseAndValidateBoard' "board.txt" >>= parseAndValidateState' fn
@@ -68,7 +68,7 @@ parseAndValidateOrders fn = printValidatedTList $
     parseAndValidateState' "state.txt" b >>= parseAndValidateOrders' fn b
 
 -- mapped to string to print list of orders in the 
-parseAndValidateOrders' :: String -> Board -> GameState -> ValidatedT IO [Order]
+parseAndValidateOrders' :: String -> Board -> BState -> ValidatedT IO [Order]
 parseAndValidateOrders' fn board state = do
   orders <- ValidatedT $ parseValidatedFromFile (parseOrders board state) fn
   ValidatedT . return. (validateOrders state) $ orders

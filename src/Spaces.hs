@@ -11,6 +11,7 @@ module Spaces
   , ConvoyPath (..)
   , cpWithoutDuplicates
   ) where
+
 import Errors
 import Utils
 import RIO
@@ -34,10 +35,8 @@ instance Eq Space where
 instance Ord Space where
   (<=) s1 s2 = spaceName s1 <= spaceName s2
 
--- neighbors are represented as pairs where the 
--- name of the first element is smaller than the second;
--- this is achieved with the smart constructor mkRoute
-
+-- neighbors aka "routes" are represented as unordered pairs
+-- e.g. (a,b) is equivalent to (b, a)
 data RouteType = ArmyOnly | FleetOnly | BothUnits | ConvoyOnly deriving (Eq, Ord)
 
 instance Show RouteType where
@@ -77,6 +76,7 @@ routeWithoutDuplicates r = case space1 r == space2 r of
   True  -> ValidationError $ "A route cannot lead to itself: " ++ show r
   False -> Valid r
 
+-- A specific type for convoy path
 data ConvoyPath = ConvoyPath { cpVia :: NonEmpty Space
                              , cpTo :: Space } deriving (Eq, Ord)
 
@@ -95,6 +95,10 @@ endPointWithoutDuplicates spcFrom cp = case spcFrom == cpTo cp of
 cpWithoutDuplicates :: Space -> ConvoyPath -> Validated ConvoyPath
 cpWithoutDuplicates spc = endPointWithoutDuplicates spc >=> viaWithoutDuplicates
 
+-- Area is a concept for places with multiple coasts
+-- so that in some sense there are multiple spaces in the same area
+-- (but only one of them can be occupied at the same time and attacking
+--  to one of them also attacks to the other spaces and so forth)
 data Area = Area { areaName :: String, areaMembers :: Set Space, areaImplicit :: Bool } deriving (Eq, Ord)
 
 instance Show Area where

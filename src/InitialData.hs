@@ -1,18 +1,15 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Examples 
-  ( testBoard
-  , testState
+module InitialData 
+  ( initialBoard
+  , initialState
   ) where
 
-import BoardDefs
-import StateDefs
-import Spaces
-import Units
+import Board
+import BState
 import Parse
 import Validate
-import Utils
 import Errors
-import Orders
+import Utils
 import RIO
 import RIO.List ( intercalate )
 
@@ -98,7 +95,7 @@ boardString = "Spaces:\n" ++ spaces ++ "\n\n"
            ++ "Routes:\n" ++ routes ++ "\n\n"
            ++ "Areas:\n"  ++ areas  ++ "\n"
   
-testBoard = parseValidated parseBoardData boardString >>= uncurry3 mkBoard
+initialBoard = parseValidated parseBoardData boardString >>= uncurry3 mkBoard
 
 occupiedString = intercalate "\n" $ 
   ["Edi, occupied by Eng F","Lvp, occupied by Eng A","Lon, occupied by Eng F"
@@ -123,8 +120,8 @@ stateString = "1901 Spring, status:" ++ "\n\n"
   ++ "Spaces:\n" ++ occupiedString ++ "\n\n"
   ++ "Areas:\n" ++ controlledString ++ "\n"
 
-testState = do
-  board <- testBoard
+initialState = do
+  board <- initialBoard
   (year, phase, spaceStates, areaStates) <- parseValidated (parseStateData board) stateString 
-  mkGameState board year phase spaceStates areaStates
+  mkBState board year phase spaceStates areaStates
 

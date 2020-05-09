@@ -1,5 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module BoardDefs
+module Board
   ( Board (..)
   , mkBoard
   , getSpacesFromArea
@@ -27,9 +27,9 @@ printArea :: Board -> Area -> String
 printArea board area = show area ++ if S.member area (boardSupplyCenters board) then " [SC]" else ""
 
 instance Show Board where
-  show b = "Spaces:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardSpaces $ b)
-    ++ "\n\nRoutes:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardRoutes $ b)
-    ++ "\n\nAreas:\n"  ++ intercalate "\n" (fmap (printArea b) . S.toAscList . boardAreas $ b)
+  show board = "Spaces:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardSpaces $ board)
+    ++ "\n\nRoutes:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardRoutes $ board)
+    ++ "\n\nAreas:\n"  ++ intercalate "\n" (fmap (printArea board) . S.toAscList . boardAreas $ board)
 
 mkSpaces :: [Space] -> Validated (Set Space)
 mkSpaces = safeToSet
@@ -54,7 +54,7 @@ mkAreas = safeToSet . fmap fst
 mkSupplyCenters :: [(Space, Bool)] -> [(Area, Bool)] -> Validated (Set Area)
 mkSupplyCenters ss as =
   let spacesInAreas = foldr (S.union . areaMembers) S.empty . fmap fst $ as
-      newSpaces = fmap fst . filter (\(s,b) -> b && not (S.member s spacesInAreas)) $ ss 
+      newSpaces = fmap fst . filter (\(s,board) -> board && not (S.member s spacesInAreas)) $ ss 
   in safeToSet ((fmap fst . filter snd) as ++ fmap simpleAreaFromSpace newSpaces)
   
 mkBoard :: [(Space, Bool)] -> [(Space, Space, RouteType)] -> [(Area, Bool)] -> Validated Board
@@ -65,8 +65,8 @@ mkBoard spaceList routeData areaData = do
   supplyCenters <- mkSupplyCenters spaceList areaData
   Valid $ Board spaces routes areas supplyCenters  
 
-
 getSpacesFromArea :: Board -> Space -> [Space]
-getSpacesFromArea b s = foldr ((++) . getSpacesFromArea) [] . S.filter (spaceInArea s) $ boardAreas b where
-  getSpacesFromArea (Area _ members _) = S.toAscList members
+getSpacesFromArea board s =
+  foldr ((++) . getSpacesFromArea) [] . S.filter (spaceInArea s) $ boardAreas board where
+    getSpacesFromArea (Area _ members _) = S.toAscList members
 
