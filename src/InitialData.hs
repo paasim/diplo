@@ -13,7 +13,7 @@ import Utils
 import RIO
 import RIO.List ( intercalate )
 
-spaces = intercalate "\n" $
+spaces = intercalate "\n"
     -- Oceans
     ["NAO, Ocean","NWG, Ocean","BAR, Ocean","NTH, Ocean","IRI, Ocean","SKA, Ocean"
     ,"ENG, Ocean","HEL, Ocean","MAO, Ocean","BAL, Ocean","BOT, Ocean","BLA, Ocean"
@@ -34,7 +34,7 @@ spaces = intercalate "\n" $
     ]
 
 routes = intercalate "\n" $
-  fmap (flip (++) " [F]")
+  fmap (++ " [F]")
   -- Oceans
     ["NAO-NWG","NAO-Cly","NAO-Lvn","NAO-IRI","NAO-MAO"
     ,"NWG-Cly","NWG-Edi","NWG-NTH","NWG-Nwy","NWG-BAR"
@@ -57,9 +57,9 @@ routes = intercalate "\n" $
     ,"Con-BulEC","Con-BulSC","BulSC-Gre","Nwy-StpNC","StpSC-Fin","Mar-SpaSC","SpaNC-Gas"
     ,"StpSC-Lvn","BulEC-Rum","SpaNC-Por"
     ] 
-  ++ fmap (flip (++) " [C]")
+  ++ fmap (++ " [C]")
       ["BAR-StpL","BOT-StpL","BOT-BAL","NTH-HEL" ,"MAO-SpaL","WES-SpaL","LYO-SpaL","AEG-BulL","BLA-BulL"]
-  ++ fmap (flip (++) " [B]")
+  ++ fmap (++ " [B]")
       ["Cly-Edi","Edi-Yor","Yor-Lon","Lon-Wal","Wal-Lvp","Lvp-Cly" --Eng
       ,"Sev-Arm","Sev-Rum","Lvn-Pru" --Rus
       ,"Arm-Ank","Syr-Smy","Smy-Con","Ank-Con" --Tur
@@ -69,7 +69,7 @@ routes = intercalate "\n" $
       ,"Bel-Hol","Hol-Kie","Den-Swe","Den-Kie","Swe-Nwy","Swe-Fin","Gre-Alb","Naf-Tun"--gray
       ,"Kie-Ber","Kie-Pru"--Ger
       ]
-  ++ fmap (flip (++) " [A]")
+  ++ fmap (++ " [A]")
      ["Edi-Lvp","Lvp-Yor","Yor-Wal"-- Eng
      ,"Nwy-StpL","Nwy-Fin","Hol-Ruh","Bel-Ruh","Bel-Bur","Por-SpaL","SpaL-Gas","SpaL-Mar"
      ,"Alb-Ser","Ser-Rum","Ser-BulL","Ser-Gre","Gre-BulL","BulL-Rum","BulL-Con","Rum-Bud"
@@ -88,7 +88,7 @@ routes = intercalate "\n" $
      ,"Pru-Sil","Sil-Mun","Sil-Ber","Mun-Ber","Mun-Ruh","Mun-Kie","Ruh-Kie"
      ]
 
-areas = intercalate "\n" $
+areas = intercalate "\n"
   ["Spa: SpaL~SpaNC~SpaSC [SC]","Bul: BulL~BulEC~BulSC [SC]","Stp: StpL~StpNC~StpSC [SC]"]
 
 boardString = "Spaces:\n" ++ spaces ++ "\n\n" 
@@ -97,7 +97,7 @@ boardString = "Spaces:\n" ++ spaces ++ "\n\n"
   
 initialBoard = parseValidated parseBoardData boardString >>= uncurry3 mkBoard
 
-occupiedString = intercalate "\n" $ 
+occupiedString = intercalate "\n"
   ["Edi, occupied by Eng F","Lvp, occupied by Eng A","Lon, occupied by Eng F"
   ,"Bre, occupied by Fra F","Par, occupied by Fra A","Mar, occupied by Fra A"
   ,"Kie, occupied by Ger F","Ber, occupied by Ger A","Mun, occupied by Ger A"
@@ -106,7 +106,7 @@ occupiedString = intercalate "\n" $
   ,"Con, occupied by Tur A","Ank, occupied by Tur F","Smy, occupied by Tur A"
   ,"StpSC, occupied by Rus F","Mos, occupied by Rus A","War, occupied by Rus A","Sev, occupied by Rus F"
   ]
-controlledString = intercalate "\n" $
+controlledString = intercalate "\n"
   ["Edi, controlled by Eng","Lvp, controlled by Eng","Lon, controlled by Eng"
   ,"Bre, controlled by Fra","Par, controlled by Fra","Mar, controlled by Fra"
   ,"Kie, controlled by Ger","Ber, controlled by Ger","Mun, controlled by Ger"

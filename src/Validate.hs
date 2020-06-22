@@ -18,7 +18,7 @@ import qualified RIO.Set as S ( empty, insert, member )
 
 -- Validation after parsing
 validateOccupierType :: BState -> UnitType -> Space -> Validated Space
-validateOccupierType state ut s = case fmap ((== ut) . unitType) . M.lookup s $ (occupiers state) of
+validateOccupierType state ut s = case fmap ((== ut) . unitType) . M.lookup s $ occupiers state of
   (Just True) -> Valid s
   _ -> ValidationError $ "Space '" ++ show s ++ "' is not occupied by a unit of type '" ++ show ut ++ "'."
 

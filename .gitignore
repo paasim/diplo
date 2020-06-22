@@ -6,3 +6,5 @@ state.txt
 orders.txt
 stack.yaml.lock
 *.swp
+report.html
+temp/*

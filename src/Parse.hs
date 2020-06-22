@@ -68,11 +68,10 @@ parseCRoute = char 'C' *> return ConvoyOnly
 parseRouteType :: Parser RouteType
 parseRouteType = string " [" *> choice [parseARoute, parseFRoute, parseBRoute, parseCRoute] <* char ']'
 
-parseUnitWith :: (Parser UnitType) -> Parser Unit
+parseUnitWith :: Parser UnitType -> Parser Unit
 parseUnitWith utp = do
   uc <- withSpace parseAnyCountry
-  ut <- utp
-  return $ Unit uc ut
+  Unit uc <$> utp
 
 parseAnyUnit = parseUnitWith parseAnyUnitType
 parseSpecifiedUnit Army = parseUnitWith parseArmy
@@ -87,7 +86,7 @@ areaToAreaNameParser   = toANameParser areaName
 
 -- Order parsing
 -- SpaceFilter is for filtering spaces that are valid when parsing
-data SpaceFilter = SpaceFilter { runSpaceFilter :: Space -> Bool }
+newtype SpaceFilter = SpaceFilter { runSpaceFilter :: Space -> Bool }
 
 instance Semigroup SpaceFilter where
   SpaceFilter f1 <> SpaceFilter f2 = SpaceFilter (\spc -> f1 spc && f2 spc)
@@ -107,9 +106,11 @@ routeForUnitType Fleet FleetOnly = True
 routeForUnitType _     BothUnits = True
 routeForUnitType _     _         = False
 
+routeForUnit = routeForUnitType . unitType
+
 routeFilter :: Space -> (RouteType -> Bool) -> Board -> SpaceFilter
 routeFilter spc' f board = SpaceFilter $
-  \spc -> not . S.null . S.filter (\x -> x == (Route spc' spc BothUnits) && (f . routeType) x) $ boardRoutes board
+  \spc -> not . S.null . S.filter (\x -> x == Route spc' spc BothUnits && (f . routeType) x) $ boardRoutes board
 
 anyRouteFilter :: Space -> Board -> SpaceFilter
 anyRouteFilter spc' board = SpaceFilter $ \spc -> S.member (Route spc' spc BothUnits) (boardRoutes board)
@@ -117,7 +118,7 @@ anyRouteFilter spc' board = SpaceFilter $ \spc -> S.member (Route spc' spc BothU
 parseSpaceWith :: SpaceFilter -> Board -> Parser Space
 parseSpaceWith (SpaceFilter f) = choice . fmap spaceToSpaceNameParser . S.toList . S.filter f . boardSpaces
 
-parseUnitAndSpaceWith :: (Parser Unit) -> BState -> Parser (Unit, Space)
+parseUnitAndSpaceWith :: Parser Unit -> BState -> Parser (Unit, Space)
 parseUnitAndSpaceWith up state = do
   unit <- withSpace up
   spc <- choice . fmap spaceToSpaceNameParser . M.keys . M.filter (== unit) . occupiers $ state
@@ -129,7 +130,7 @@ parseHold board state unit spc = string " holds" *> return Hold
 parseAttack :: Board -> BState -> Unit -> Space -> Parser OrderData
 parseAttack board state attacker spcFrom = do
   string " to " <|> string "-"
-  spcTo <- parseSpaceWith (routeFilter spcFrom (routeForUnitType (unitType attacker)) board) board
+  spcTo <- parseSpaceWith (routeFilter spcFrom (routeForUnit attacker) board) board
   return $ Attack spcTo
 
 parseVias :: Board -> Space -> Parser [Space]
@@ -137,8 +138,8 @@ parseVias board viaPrev = do
   testParse <- optional $
     withSpace (parseSpaceWith (spaceTypeFilter Ocean <> anyRouteFilter viaPrev board) board)
   case testParse of
-    Nothing        -> return []
-    Just (viaNext) -> ((:) viaNext) <$> parseVias board viaNext
+    Nothing      -> return []
+    Just viaNext -> (:) viaNext <$> parseVias board viaNext
 
 parseAttackViaConvoy :: Board -> BState -> Unit -> Space -> Parser OrderData
 parseAttackViaConvoy board state attacker spcFrom = do
@@ -160,13 +161,13 @@ parseConvoy board state convoyer convoyerSpace = do
 parseSuppAttack :: Board -> Unit -> Space -> Unit -> Space -> Parser OrderData
 parseSuppAttack board supporter supporterSpace attacker spcFrom = do
   string " to " <|> string "-"
-  spcTo <- parseSpaceWith (routeFilter spcFrom (routeForUnitType (unitType attacker)) board
-                        <> routeFilter supporterSpace (routeForUnitType (unitType supporter)) board) board
+  spcTo <- parseSpaceWith (routeFilter spcFrom (routeForUnit attacker) board
+                        <> routeFilter supporterSpace (routeForUnit supporter) board) board
   return $ SuppAttack attacker spcFrom spcTo
 
 parseSuppHold :: Board -> Unit -> Space -> Unit -> Space -> Parser OrderData
-parseSuppHold board supporter supporterSpace holder holdAt = do
-  if (runSpaceFilter (routeFilter supporterSpace (routeForUnitType (unitType supporter)) board)) holdAt
+parseSuppHold board supporter supporterSpace holder holdAt =
+  if runSpaceFilter (routeFilter supporterSpace (routeForUnit supporter) board) holdAt
     then string " holds" >> return (SuppHold holder holdAt)
     else unexpected $ "No route between '" ++ show supporterSpace ++ "' and '" ++ show holdAt ++ "'"
 
@@ -221,7 +222,7 @@ parseNonTrivialArea sp = do
   areaName <- parseName
   withSpace $ char ':'
   spcs <- sepBy1 sp (char '~') 
-  return $ Area (areaName) (S.fromList spcs) False
+  return $ Area areaName (S.fromList spcs) False
 
 parseArea :: Parser Space -> Parser (Area, Bool)
 parseArea sp = do

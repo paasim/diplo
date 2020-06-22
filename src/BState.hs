@@ -46,8 +46,8 @@ printStateFor showA str a (Just b) = showA a ++ ", " ++ str ++ " by " ++ show b
 
 statesFor :: (Ord a, Show b) => (BState -> Set a) -> (BState -> Map a b) -> (a -> String) -> String -> BState -> [String]
 statesFor getKeys stateMap showKey showWith state =
-  fmap (printStateFor showKey showWith <*> (flip M.lookup) (stateMap state))
-  . filter ((flip M.member) (stateMap state)) -- this skips all uncontrolled/unoccupied spaces/areas
+  fmap (printStateFor showKey showWith <*> flip M.lookup (stateMap state))
+  . filter (flip M.member (stateMap state)) -- this skips all uncontrolled/unoccupied spaces/areas
   . S.toAscList . getKeys $ state
 
 areaStates  = statesFor (boardAreas  . gameBoard) controllers areaName "controlled"

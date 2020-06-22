@@ -52,24 +52,19 @@ instance Show Route where
                spn2 = spaceName (space2 r) 
            in min spn1 spn2 ++ "-" ++ max spn1 spn2 ++ " " ++ show (routeType r)
 
+
+maxSpace :: Route -> Space
+maxSpace = max <$> space1 <*> space2
+minSpace = min <$> space1 <*> space2
+
 instance Eq Route where
-  (==) route1 route2 = 
-    let max1 = max (space1 route1) (space2 route1)
-        max2 = max (space1 route2) (space2 route2)
-        min1 = min (space1 route1) (space2 route1)
-        min2 = min (space1 route2) (space2 route2)
-    in max1 == max2 && min1 == min2
+  (==) route1 route2 = maxSpace route1 == maxSpace route2
+                    && minSpace route1 == minSpace route2
 
 -- order does not depend on which component has which space
 instance Ord Route where
-  (<=) route1 route2 = 
-    let max1 = max (space1 route1) (space2 route1)
-        max2 = max (space1 route2) (space2 route2)
-        min1 = min (space1 route1) (space2 route1)
-        min2 = min (space1 route2) (space2 route2)
-        type1 = routeType route1 
-        type2 = routeType route2
-    in min1 < min2 || (min1 == min2 && max1 <= max2)
+  (<=) route1 route2 = minSpace route1 < minSpace route2
+    || (minSpace route1 == minSpace route2 && maxSpace route1 <= maxSpace route2)
 
 routeWithoutDuplicates :: Route -> Validated Route
 routeWithoutDuplicates r = case space1 r == space2 r of
@@ -81,15 +76,15 @@ data ConvoyPath = ConvoyPath { cpVia :: NonEmpty Space
                              , cpTo :: Space } deriving (Eq, Ord)
 
 showMid :: NonEmpty Space -> String
-showMid (s1 :| s2) = intercalate " " . fmap spaceName $ s1:s2
+showMid (s1 :| s2) = unwords . fmap spaceName $ s1:s2
 
 instance Show ConvoyPath where
-  show (ConvoyPath via to) = "via " ++ showMid via ++ " to " ++ spaceName to
+  show (ConvoyPath cpvia to) = "via " ++ showMid cpvia ++ " to " ++ spaceName to
 
 viaWithoutDuplicates cp = safeToSet (NE.toList . cpVia $ cp) *> return cp
 
 endPointWithoutDuplicates spcFrom cp = case spcFrom == cpTo cp of
-  True  -> ValidationError $ "The convoy path cannot start from and end to the same space."
+  True  -> ValidationError "The convoy path cannot start from and end to the same space."
   False -> Valid cp
 
 cpWithoutDuplicates :: Space -> ConvoyPath -> Validated ConvoyPath

@@ -67,6 +67,6 @@ mkBoard spaceList routeData areaData = do
 
 getSpacesFromArea :: Board -> Space -> [Space]
 getSpacesFromArea board s =
-  foldr ((++) . getSpacesFromArea) [] . S.filter (spaceInArea s) $ boardAreas board where
+  concatMap getSpacesFromArea . S.filter (spaceInArea s) $ boardAreas board where
     getSpacesFromArea (Area _ members _) = S.toAscList members
 
