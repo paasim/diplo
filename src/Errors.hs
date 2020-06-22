@@ -2,7 +2,7 @@
 module Errors where
 
 import RIO
-import Text.Trifecta ( ErrInfo )
+import Text.Trifecta ( ErrInfo (..) )
 
 -- Error handling
 data Validated a = ParsingError ErrInfo | ValidationError String | Valid a
@@ -13,7 +13,7 @@ instance Functor Validated where
   fmap f (ValidationError s) = ValidationError s
 
 instance Applicative Validated where
-  pure a = Valid a
+  pure = Valid
   (Valid f) <*> (Valid a)                      = Valid (f a)
   (ValidationError s) <*> (ValidationError s') = ValidationError (s ++ "\n" ++ s')
   (ParsingError e) <*> _                       = ParsingError e
@@ -26,19 +26,22 @@ instance Monad Validated where
   ParsingError e    >>= f = ParsingError e
   ValidationError s >>= f = ValidationError s
 
+-- There must be a better way to only print the errDoc
+extractErrDoc (ErrInfo errDoc _) = errDoc
+
 instance Show a => Show (Validated a) where
   show (Valid a)             = show a ++ "\n"
-  show (ParsingError e)      = show e ++ "\n"
+  show (ParsingError e)      = show (extractErrDoc e) ++ "\n"
   show (ValidationError s) = "Validation errors:\n" ++ s
 
 
-data ValidatedT m a = ValidatedT { runValidatedT :: m (Validated a) }
+newtype ValidatedT m a = ValidatedT { runValidatedT :: m (Validated a) }
 
 instance Functor m => Functor (ValidatedT m) where
-  fmap f (ValidatedT mva) = ValidatedT $ (fmap f) <$> mva
+  fmap f (ValidatedT mva) = ValidatedT $ fmap f <$> mva
 
 instance Applicative m => Applicative (ValidatedT m) where
-  pure a                          = ValidatedT . pure . pure $ a
+  pure                            = ValidatedT . pure . pure
   ValidatedT f <*> ValidatedT mva = ValidatedT $ (<*>) <$> f <*> mva 
 
 instance Monad m => Monad (ValidatedT m) where
