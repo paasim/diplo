@@ -11,9 +11,8 @@ import Validate
 import Errors
 import Utils
 import RIO
-import RIO.List ( intercalate )
 
-spaces = intercalate "\n"
+spaces = unlines
     -- Oceans
     ["NAO, Ocean","NWG, Ocean","BAR, Ocean","NTH, Ocean","IRI, Ocean","SKA, Ocean"
     ,"ENG, Ocean","HEL, Ocean","MAO, Ocean","BAL, Ocean","BOT, Ocean","BLA, Ocean"
@@ -33,7 +32,7 @@ spaces = intercalate "\n"
     ,"Arm, Coast","Ank, Coast [SC]","Con, Coast [SC]","Smy, Coast [SC]","Syr, Coast" --Tur
     ]
 
-routes = intercalate "\n" $
+routes = unlines $
   fmap (++ " [F]")
   -- Oceans
     ["NAO-NWG","NAO-Cly","NAO-Lvp","NAO-IRI","NAO-MAO"
@@ -88,7 +87,7 @@ routes = intercalate "\n" $
      ,"Pru-Sil","Sil-Mun","Sil-Ber","Mun-Ber","Mun-Ruh","Mun-Kie","Ruh-Kie"
      ]
 
-areas = intercalate "\n"
+areas = unlines
   ["Spa: SpaL~SpaNC~SpaSC [SC]","Bul: BulL~BulEC~BulSC [SC]","Stp: StpL~StpNC~StpSC [SC]"]
 
 boardString = "Spaces:\n" ++ spaces ++ "\n\n" 
@@ -97,7 +96,7 @@ boardString = "Spaces:\n" ++ spaces ++ "\n\n"
   
 initialBoard = parseValidated parseBoardData boardString >>= uncurry3 mkBoard
 
-occupiedString = intercalate "\n"
+occupiedString = unlines
   ["Edi, occupied by Eng F","Lvp, occupied by Eng A","Lon, occupied by Eng F"
   ,"Bre, occupied by Fra F","Par, occupied by Fra A","Mar, occupied by Fra A"
   ,"Kie, occupied by Ger F","Ber, occupied by Ger A","Mun, occupied by Ger A"
@@ -106,7 +105,7 @@ occupiedString = intercalate "\n"
   ,"Con, occupied by Tur A","Ank, occupied by Tur F","Smy, occupied by Tur A"
   ,"StpSC, occupied by Rus F","Mos, occupied by Rus A","War, occupied by Rus A","Sev, occupied by Rus F"
   ]
-controlledString = intercalate "\n"
+controlledString = unlines
   ["Edi, controlled by Eng","Lvp, controlled by Eng","Lon, controlled by Eng"
   ,"Bre, controlled by Fra","Par, controlled by Fra","Mar, controlled by Fra"
   ,"Kie, controlled by Ger","Ber, controlled by Ger","Mun, controlled by Ger"

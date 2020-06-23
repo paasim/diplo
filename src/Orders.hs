@@ -9,7 +9,7 @@ import Spaces
 import Units
 import RIO
 
-data OrderData = AutoHold  --this will be the result of a failed order
+data OrderData = AutoHold  --this will be the result of a valid but failed order
                | Hold
                | Attack Space
                | SuppHold Unit Space

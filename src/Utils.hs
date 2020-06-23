@@ -8,8 +8,7 @@ import qualified RIO.Set as S ( empty, insert, member )
 
 -- utility functions
 toListChecker :: (a -> Validated a) -> [a] -> Validated [a]
-toListChecker f []     = Valid []
-toListChecker f (x:xs) = (:) <$> f x <*> toListChecker f xs
+toListChecker f xs = foldr (\x -> (<*>) ((:) <$> f x)) (Valid []) xs
 
 setInsertNonExisting :: (Show a, Ord a) => a -> Set a -> Validated (Set a)
 setInsertNonExisting a sa = case S.member a sa of

@@ -263,7 +263,7 @@ parseOrders board state = sepEndBy1 (parseOrder board state) newline <* eof
 
 -- board
 parseSupplyStatus :: Parser Bool
-parseSupplyStatus = optional (string " [SC]") >>= return . isJust
+parseSupplyStatus = isJust <$> optional (string " [SC]")
 
 parseNewSpace :: Parser (Space, Bool)
 parseNewSpace = do

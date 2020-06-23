@@ -12,7 +12,6 @@ import Units
 import Errors
 import Utils
 import RIO
-import RIO.List ( intercalate )
 import qualified RIO.Map as M ( lookup, member )
 import qualified RIO.Set as S ( member, toAscList )
 
@@ -58,9 +57,9 @@ instance Show BState where
       ++ " " ++ (show . snd. gamePhase) state
       ++ ", status:\n\n"
       ++ "Spaces:\n"
-      ++ intercalate "\n" (spaceStates state) ++ "\n\n"
+      ++ unlines (spaceStates state) ++ "\n\n"
       ++ "Areas:\n"
-      ++ intercalate "\n" (areaStates state)
+      ++ unlines (areaStates state)
 
 showGameBoard :: BState -> String
 showGameBoard = show . gameBoard

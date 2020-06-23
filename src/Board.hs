@@ -10,7 +10,6 @@ import Units
 import Errors
 import Utils
 import RIO
-import RIO.List ( intercalate )
 import qualified RIO.Set as S ( empty, filter, insert, member, toAscList, union )
 import qualified RIO.Map as M ( toList )
 
@@ -31,9 +30,9 @@ showPair :: (Show a, Show b) => (a, b) -> String
 showPair (a, b) = show a ++ " " ++ show b
 
 instance Show Board where
-  show board = "Spaces:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardSpaces $ board)
-    ++ "\n\nRoutes:\n" ++ intercalate "\n" (fmap showPair . M.toList . boardRoutes $ board)
-    ++ "\n\nAreas:\n"  ++ intercalate "\n" (fmap (printArea board) . S.toAscList . boardAreas $ board)
+  show board = "Spaces:\n" ++ unlines (fmap show . S.toAscList . boardSpaces $ board)
+    ++ "\n\nRoutes:\n" ++ unlines (fmap showPair . M.toList . boardRoutes $ board)
+    ++ "\n\nAreas:\n" ++ unlines (fmap (printArea board) . S.toAscList . boardAreas $ board)
 
 mkSpaces :: [Space] -> Validated (Set Space)
 mkSpaces = safeToSet

@@ -100,21 +100,3 @@ simpleAreaFromSpace spc = Area (spaceName spc) (S.singleton spc) True
 spaceInArea :: Space -> Area -> Bool
 spaceInArea s (Area _ sa _) = S.member s sa
 
-
--- Order
-  -- existing unit + space
--- Hold
-  -- ok
--- Attack
-  -- Existing route suitable for attacker
--- Support 
-  -- supportee existing unit + space
--- SuppHold
-  -- existing route from supporter to supportee
--- SuppAttack
-  -- existing route from supporter to target
--- Convoy
-  -- Existing unit at start, land at end (routepath exists?)
--- AttackViaConvoy
-  -- existing via (oceans, routable)
-  -- existing endpoint (land, via leads to)
