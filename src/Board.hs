@@ -12,11 +12,12 @@ import Utils
 import RIO
 import RIO.List ( intercalate )
 import qualified RIO.Set as S ( empty, filter, insert, member, toAscList, union )
+import qualified RIO.Map as M ( toList )
 
 
 -- Definition of the boad and related functions
 data Board = Board { boardSpaces :: Set Space
-                   , boardRoutes :: Set Route
+                   , boardRoutes :: Map Route RouteType
                    -- used to specify that an attack to a coast also attacks
                    -- to the corresponding land and vice versa
                    , boardAreas :: Set Area 
@@ -26,20 +27,19 @@ data Board = Board { boardSpaces :: Set Space
 printArea :: Board -> Area -> String
 printArea board area = show area ++ if S.member area (boardSupplyCenters board) then " [SC]" else ""
 
+showPair :: (Show a, Show b) => (a, b) -> String
+showPair (a, b) = show a ++ " " ++ show b
+
 instance Show Board where
   show board = "Spaces:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardSpaces $ board)
-    ++ "\n\nRoutes:\n" ++ intercalate "\n" (fmap show . S.toAscList . boardRoutes $ board)
+    ++ "\n\nRoutes:\n" ++ intercalate "\n" (fmap showPair . M.toList . boardRoutes $ board)
     ++ "\n\nAreas:\n"  ++ intercalate "\n" (fmap (printArea board) . S.toAscList . boardAreas $ board)
 
 mkSpaces :: [Space] -> Validated (Set Space)
 mkSpaces = safeToSet
 
-mkRoutes :: [(Space, Space, RouteType)] -> Validated (Set Route)
-mkRoutes [] = Valid S.empty
-mkRoutes ((s1,s2,rt):rs) = do
-  r <- routeWithoutDuplicates $ Route s1 s2 rt
-  rs <- mkRoutes rs
-  setInsertNonExisting r rs
+mkRoutes :: [(Route, RouteType)] -> Validated (Map Route RouteType)
+mkRoutes = safeToMap
 
 allSpacesHaveUniqueArea :: [(Space, Bool)] -> Set Area -> Validated (Set Area)
 allSpacesHaveUniqueArea []     sa = Valid sa
@@ -57,10 +57,10 @@ mkSupplyCenters ss as =
       newSpaces = fmap fst . filter (\(s,board) -> board && not (S.member s spacesInAreas)) $ ss 
   in safeToSet ((fmap fst . filter snd) as ++ fmap simpleAreaFromSpace newSpaces)
   
-mkBoard :: [(Space, Bool)] -> [(Space, Space, RouteType)] -> [(Area, Bool)] -> Validated Board
-mkBoard spaceList routeData areaData = do
+mkBoard :: [(Space, Bool)] -> [(Route, RouteType)] -> [(Area, Bool)] -> Validated Board
+mkBoard spaceList routeList areaData = do
   spaces <- mkSpaces . fmap fst $ spaceList
-  routes <- mkRoutes routeData
+  routes <- mkRoutes routeList
   areas <- mkAreas areaData >>= allSpacesHaveUniqueArea spaceList
   supplyCenters <- mkSupplyCenters spaceList areaData
   Valid $ Board spaces routes areas supplyCenters  

@@ -16,7 +16,7 @@ Some examples of correct orders:
 Aus F Tri holds
 Ita A Ven supports (Aus F Tri holds)
 Aus A Vie-Gal
-Aus A Bud supports (Aus a Vie-Gal)
+Aus A Bud supports (Aus A Vie-Gal)
 Eng F NTH convoys Eng A from Lon to Kie
 Eng F HEL convoys Eng A from Lon to Kie
 Eng A Lon via NTH HEL to Kie
@@ -59,18 +59,16 @@ $ # Typo in the unit/space, the only fleet Austria has is at Tri
 $ cat orders2.txt
 Aus F Vie-Gal
 $ diplo-exe --orders orders2.txt
-ErrInfo {_errDoc = orders2.txt:1:7: error: expected: "Tri"
-1 | Aus F Vie-Gal
-  |       ^       , _errDeltas = [Directed "orders2.txt" 0 6 6 6]}
+orders2.txt:1:7: error: expected: "Tri"
+1 | Aus F Vie-Gal 
 
 $ # Typo in the order
 $ cat orders3.txt
 Aus F Tri hlds
 $ diplo-exe --orders orders3.txt
-ErrInfo {_errDoc = orders3.txt:1:10: error: expected: " convoys ", " holds", " supports (", " to ",
-    " via ", "-"
-1 | Aus F Tri hlds
-  |          ^     , _errDeltas = [Directed "orders3.txt" 0 9 9 9]}
+orders3.txt:1:10: error: expected: " convoys", " holds", " supports", " to", "-"
+1 | Aus F Tri hlds 
+  |          ^    
 ```
 
 ## Todo

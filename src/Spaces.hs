@@ -7,7 +7,6 @@ module Spaces
   , SpaceType (..)
   , Route (..)
   , RouteType (..)
-  , routeWithoutDuplicates
   , ConvoyPath (..)
   , cpWithoutDuplicates
   ) where
@@ -35,8 +34,6 @@ instance Eq Space where
 instance Ord Space where
   (<=) s1 s2 = spaceName s1 <= spaceName s2
 
--- neighbors aka "routes" are represented as unordered pairs
--- e.g. (a,b) is equivalent to (b, a)
 data RouteType = ArmyOnly | FleetOnly | BothUnits | ConvoyOnly deriving (Eq, Ord)
 
 instance Show RouteType where
@@ -45,12 +42,14 @@ instance Show RouteType where
   show BothUnits = "[B]"
   show ConvoyOnly = "[C]"
 
-data Route = Route { space1 :: Space, space2 :: Space, routeType :: RouteType }
+-- neighbors aka "routes" are represented as unordered pairs
+-- e.g. (a,b) is equivalent to (b, a)
+data Route = Route { space1 :: Space, space2 :: Space }
 
 instance Show Route where
   show r = let spn1 = spaceName (space1 r) 
                spn2 = spaceName (space2 r) 
-           in min spn1 spn2 ++ "-" ++ max spn1 spn2 ++ " " ++ show (routeType r)
+           in min spn1 spn2 ++ "-" ++ max spn1 spn2-- ++ " " ++ show (routeType r)
 
 
 maxSpace :: Route -> Space
@@ -65,11 +64,6 @@ instance Eq Route where
 instance Ord Route where
   (<=) route1 route2 = minSpace route1 < minSpace route2
     || (minSpace route1 == minSpace route2 && maxSpace route1 <= maxSpace route2)
-
-routeWithoutDuplicates :: Route -> Validated Route
-routeWithoutDuplicates r = case space1 r == space2 r of
-  True  -> ValidationError $ "A route cannot lead to itself: " ++ show r
-  False -> Valid r
 
 -- A specific type for convoy path
 data ConvoyPath = ConvoyPath { cpVia :: NonEmpty Space
@@ -106,3 +100,21 @@ simpleAreaFromSpace spc = Area (spaceName spc) (S.singleton spc) True
 spaceInArea :: Space -> Area -> Bool
 spaceInArea s (Area _ sa _) = S.member s sa
 
+
+-- Order
+  -- existing unit + space
+-- Hold
+  -- ok
+-- Attack
+  -- Existing route suitable for attacker
+-- Support 
+  -- supportee existing unit + space
+-- SuppHold
+  -- existing route from supporter to supportee
+-- SuppAttack
+  -- existing route from supporter to target
+-- Convoy
+  -- Existing unit at start, land at end (routepath exists?)
+-- AttackViaConvoy
+  -- existing via (oceans, routable)
+  -- existing endpoint (land, via leads to)

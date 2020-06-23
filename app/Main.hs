@@ -71,5 +71,5 @@ parseAndValidateOrders fn = printValidatedTList $
 parseAndValidateOrders' :: String -> Board -> BState -> ValidatedT IO [Order]
 parseAndValidateOrders' fn board state = do
   orders <- ValidatedT $ parseValidatedFromFile (parseOrders board state) fn
-  ValidatedT . return . validateOrders state $ orders
+  ValidatedT . return . validateOrders $ orders
 
