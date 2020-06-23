@@ -36,7 +36,7 @@ spaces = intercalate "\n"
 routes = intercalate "\n" $
   fmap (++ " [F]")
   -- Oceans
-    ["NAO-NWG","NAO-Cly","NAO-Lvn","NAO-IRI","NAO-MAO"
+    ["NAO-NWG","NAO-Cly","NAO-Lvp","NAO-IRI","NAO-MAO"
     ,"NWG-Cly","NWG-Edi","NWG-NTH","NWG-Nwy","NWG-BAR"
     ,"BAR-Nwy","BAR-StpNC","BOT-StpSC","BOT-Fin","BOT-Swe","BOT-Lvn"
     ,"BAL-Swe","BAL-Den","BAL-Kie","BAL-Ber","BAL-Pru","BAL-Lvn"
