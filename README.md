@@ -68,7 +68,8 @@ Bre, occupied by France Fleet
 $ diplo-exe orders
 usage: diplo-exe orders (check | echo | execute) orders.txt
 
-$ # Validate orders w.r.t. board.txt and state.txt - prints the orders back if they are all valid
+$ # Validate orders w.r.t. board.txt and state.txt
+$ # prints the orders back if they are all valid
 $ cat orders1.txt
 Aus A Vie-Tyr
 Aus F Tri holds
@@ -84,7 +85,7 @@ Germany Fleet Kie to Den
 Germany Army Ber to Kie
 
 
-$ # Typo in the unit/space, the only fleet Austria has is at Tri
+$ # Typo in the unit/space, Austria has armies only in Bud and Vie
 $ cat order_error1.txt
 Aus F Vie-Gal
 $ diplo-exe orders check orders2.txt
@@ -96,6 +97,12 @@ orders2.txt:2:7: error: expected: "Bud", "Vie"
 $ # Typo in the order
 $ cat order_error2.txt
 Aus F Tri hlds
+$ diplo-exe orders check order_error2.txt
+order_error2.txt:1:10: error: expected: " convoys", " holds", " supports",
+    " to", "-"
+1 | Aus F Tri hlds 
+  |          ^     
+
 
 $ # Execute some orders
 $ diplo-exe orders execute orders1.txt > state1.txt
@@ -147,5 +154,4 @@ Lvp, occupied by England Army
 
 [diplomacy]: https://en.wikipedia.org/wiki/Diplomacy
 [stack]: https://github.com/commercialhaskell/stack
-
 
