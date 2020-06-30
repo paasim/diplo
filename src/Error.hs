@@ -1,11 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Errors where
+module Error where
 
 import RIO
 import Text.Trifecta ( ErrInfo (..) )
 
 -- Error handling
-data Validated a = ParsingError ErrInfo | ValidationError String | Valid a
+data Validated a = ParsingError ErrInfo   -- from parsing, ie. Trifecta
+                 | ValidationError String -- from other validation
+                 | Valid a                -- valid stuff
 
 instance Functor Validated where
   fmap f (Valid a) = Valid (f a)
@@ -15,7 +17,7 @@ instance Functor Validated where
 instance Applicative Validated where
   pure = Valid
   (Valid f) <*> (Valid a)                      = Valid (f a)
-  (ValidationError s) <*> (ValidationError s') = ValidationError (s ++ "\n" ++ s')
+  (ValidationError s) <*> (ValidationError s') = ValidationError (s <> "\n" <> s')
   (ParsingError e) <*> _                       = ParsingError e
   _ <*> (ParsingError e)                       = ParsingError e
   (ValidationError s) <*> _                    = ValidationError s
@@ -30,11 +32,11 @@ instance Monad Validated where
 extractErrDoc (ErrInfo errDoc _) = errDoc
 
 instance Show a => Show (Validated a) where
-  show (Valid a)             = show a ++ "\n"
-  show (ParsingError e)      = show (extractErrDoc e) ++ "\n"
-  show (ValidationError s) = "Validation errors:\n" ++ s
+  show (Valid a)             = show a <> "\n"
+  show (ParsingError e)      = show (extractErrDoc e) <> "\n"
+  show (ValidationError s) = "Validation errors:\n" <> s
 
-
+-- this is for handling IO with Validated
 newtype ValidatedT m a = ValidatedT { runValidatedT :: m (Validated a) }
 
 instance Functor m => Functor (ValidatedT m) where
@@ -54,4 +56,7 @@ instance Monad m => Monad (ValidatedT m) where
 
 instance MonadTrans ValidatedT where
   lift ma = ValidatedT $ fmap Valid ma
+
+joinInsideValidatedT :: Monad m => ValidatedT m (Validated a) -> ValidatedT m a
+joinInsideValidatedT (ValidatedT mvva) = ValidatedT . fmap join $ mvva
 

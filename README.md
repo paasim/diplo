@@ -1,6 +1,8 @@
 # diplo
 
-A haskell implementation of a [diplomacy] order checker. Can be used to validate movement phase orders. Also contains functionality to initialize and validate the board and the game state.
+A haskell implementation of a [diplomacy] order checker. Can be used to validate and execute orders. Also contains functionality to initialize and validate the board and the game state.
+
+Does not contain functionality to resolve which orders get executed and which do not (due to another order with more supporting units for example).
 
 ## Install
 Can be installed with [stack] by running
@@ -10,7 +12,7 @@ Can be installed with [stack] by running
 
 ## Orders
 
-Some examples of correct orders:
+Some examples of correct orders in the movement phase:
 
 ```
 Aus F Tri holds
@@ -22,64 +24,128 @@ Eng F HEL convoys Eng A from Lon to Kie
 Eng A Lon via NTH HEL to Kie
 ```
 
+Retreat phase:
+
+```
+Ita A Ven retreats to Pie
+Aus F Vie disbands 
+```
+
+Build/disband phase:
+
+```
+Aus builds Tri F
+Ita disbands Nap
+```
+
 
 ## Examples
 
 ```bash
-$ # Initialize board and state, this writes two files, board.txt and state.txt
-$ diplo-exe --init
+$ # check functionality
+$ diplo-exe
+usage: diplo-exe (init | board | state | orders | retreat-orders | build-orders)
+
+$ diplo-exe init
+usage: diplo-exe init (board | state | all)
+
+$ diplo-exe init all
 
 $ # Validate generated state - this prints the state back to the user if the file is valid
-$ diplo-exe --state state.txt
-1901 Spring, status:
+$ diplo-exe state check state.txt
+Spring 1901, status:
 
 Spaces:
-Ank, occupied by Turkey Fleet
-Ber, occupied by Germany Army
+Tri, occupied by Austria Fleet
+Bud, occupied by Austria Army
+Vie, occupied by Austria Army
+Edi, occupied by England Fleet
+Lon, occupied by England Fleet
+Lvp, occupied by England Army
 Bre, occupied by France Fleet
 ...
 
+$ diplo-exe orders
+usage: diplo-exe orders (check | echo | execute) orders.txt
 
 $ # Validate orders w.r.t. board.txt and state.txt - prints the orders back if they are all valid
-$ head orders.txt
-Aus A Vie-Gal
-Aus A Bud supports (Aus A Vie-Gal)
+$ cat orders1.txt
+Aus A Vie-Tyr
 Aus F Tri holds
+Aus A Bud holds
 Ger F Kie-Den
 Ger A Ber-Kie
-$ diplo-exe --orders orders.txt
-Aus A Vie-Gal
-Aus A Bud supports (Aus A Vie-Gal)
-Aus F Tri holds
-Ger F Kie-Den
-Ger A Ber-Kie
-...
+
+$ diplo-exe orders check orders1.txt
+Austria Fleet Tri holds
+Austria Army Bud holds
+Austria Army Vie to Tyr
+Germany Fleet Kie to Den
+Germany Army Ber to Kie
+
 
 $ # Typo in the unit/space, the only fleet Austria has is at Tri
-$ cat orders2.txt
+$ cat order_error1.txt
 Aus F Vie-Gal
-$ diplo-exe --orders orders2.txt
-orders2.txt:1:7: error: expected: "Tri"
-1 | Aus F Vie-Gal 
+$ diplo-exe orders check orders2.txt
+orders2.txt:2:7: error: expected: "Bud", "Vie"
+2 | Aus A Tyr supports (Aus A Tri-Ven) 
+  |       ^                            
+
 
 $ # Typo in the order
-$ cat orders3.txt
+$ cat order_error2.txt
 Aus F Tri hlds
-$ diplo-exe --orders orders3.txt
-orders3.txt:1:10: error: expected: " convoys", " holds", " supports", " to", "-"
-1 | Aus F Tri hlds 
-  |          ^    
+
+$ # Execute some orders
+$ diplo-exe orders execute orders1.txt > state1.txt
+$ mv state1.txt state.txt
+
+$ # attack, Fall 1901
+$ cat orders2.txt
+Aus F Tri-Ven
+Aus A Tyr supports (Aus A Tri-Ven)
+Tur A Smy-Syr
+Tur F Ank-BLA
+$ diplo-exe orders execute orders2.txt > state2.txt
+$ mv state2.txt state.txt
+
+$ # retreat, Fall 1901
+$ cat orders3.txt
+Ita A Ven disbands
+Ita A Ven retreats to Pie
+$ diplo-exe retreat-orders execute orders3.txt > state3.txt
+$ mv state3.txt state.txt
+
+$ # build, Winter 1901
+$ cat orders4.txt
+Ita disbands Nap
+Aus builds Tri F
+$ diplo-exe build-orders execute orders4.txt > state4.txt
+$ mv state4.txt state.txt
+
+$ cat state.txt
+Spring 1902, status:
+
+Spaces:
+Tri, occupied by Austria Fleet
+Ven, occupied by Austria Fleet
+Bud, occupied by Austria Army
+Tyr, occupied by Austria Army
+Edi, occupied by England Fleet
+Lon, occupied by England Fleet
+Lvp, occupied by England Army
+...
 ```
 
 ## Todo
 
-- Functionality to read and validate orders in other phases than movement phase
-- Functionality to infer which orders will be executed
-- Functionality to update state according to orders
-- Use RIO for IO
-- Better error messages
 - Tests and CI
+- Use RIO for IO
+- Functionality to infer which orders will be executed
+- Better error messages, e.g. when trying to issue a support order when no units are nearby
 
 [diplomacy]: https://en.wikipedia.org/wiki/Diplomacy
 [stack]: https://github.com/commercialhaskell/stack
+
 

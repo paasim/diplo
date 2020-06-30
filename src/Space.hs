@@ -1,5 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Spaces
+module Space
   ( Area (..)
   , spaceInArea
   , simpleAreaFromSpace
@@ -11,14 +11,12 @@ module Spaces
   , cpWithoutDuplicates
   ) where
 
-import Errors
-import Utils
+import Error
+import Util
 import RIO
-import RIO.Prelude ((>=>))
-import RIO.List ( intercalate )
-import RIO.NonEmpty ( (<|) )
+import qualified RIO.List as L ( intercalate )
 import qualified RIO.NonEmpty as NE ( toList )
-import qualified RIO.Set as S ( member, singleton, toAscList )
+import qualified RIO.Set as S ( member, singleton, toList )
 
 -- Spaces and related functions
 data SpaceType = Land | Ocean | Coast deriving (Eq, Ord, Show)
@@ -26,7 +24,7 @@ data SpaceType = Land | Ocean | Coast deriving (Eq, Ord, Show)
 data Space = Space { spaceName :: String, spaceType :: SpaceType }
 
 instance Show Space where
-  show s = spaceName s ++ ", " ++ (show . spaceType) s
+  show s = spaceName s <> ", " <> (show . spaceType) s
 
 instance Eq Space where
   (==) s1 s2 = spaceName s1 == spaceName s2
@@ -49,7 +47,7 @@ data Route = Route { space1 :: Space, space2 :: Space }
 instance Show Route where
   show r = let spn1 = spaceName (space1 r) 
                spn2 = spaceName (space2 r) 
-           in min spn1 spn2 ++ "-" ++ max spn1 spn2-- ++ " " ++ show (routeType r)
+           in min spn1 spn2 <> "-" <> max spn1 spn2-- <> " " <> show (routeType r)
 
 
 maxSpace :: Route -> Space
@@ -73,7 +71,7 @@ showMid :: NonEmpty Space -> String
 showMid (s1 :| s2) = unwords . fmap spaceName $ s1:s2
 
 instance Show ConvoyPath where
-  show (ConvoyPath cpvia to) = "via " ++ showMid cpvia ++ " to " ++ spaceName to
+  show (ConvoyPath cpvia to) = "via " <> showMid cpvia <> " to " <> spaceName to
 
 viaWithoutDuplicates cp = safeToSet (NE.toList . cpVia $ cp) *> return cp
 
@@ -92,11 +90,11 @@ data Area = Area { areaName :: String, areaMembers :: Set Space, areaImplicit ::
 
 instance Show Area where
   show (Area n _ True)     = n
-  show (Area n memb False) = n ++ ": " ++ (intercalate "~" . fmap spaceName . S.toAscList $ memb)
+  show (Area n memb False) = n <> ": " <> (L.intercalate "~" . fmap spaceName . S.toList $ memb)
 
 simpleAreaFromSpace :: Space -> Area
 simpleAreaFromSpace spc = Area (spaceName spc) (S.singleton spc) True
 
 spaceInArea :: Space -> Area -> Bool
-spaceInArea s (Area _ sa _) = S.member s sa
+spaceInArea spc (Area _ sa _) = S.member spc sa
 

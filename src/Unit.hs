@@ -1,5 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-module Units
+module Unit
   ( Country (..)
   , UnitType (..)
   , Unit (..)
@@ -28,5 +28,5 @@ instance Show Country where
 data Unit = Unit { unitCountry :: Country, unitType :: UnitType } deriving (Eq, Ord)
 
 instance Show Unit where
-  show (Unit uc ut) = show uc ++ " " ++ show ut
+  show (Unit uc ut) = show uc <> " " <> show ut
 

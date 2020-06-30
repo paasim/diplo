@@ -1,97 +1,149 @@
---{-# LANGUAGE NoImplicitPrelude #-}
-module Validate
-  ( parseAndValidateBoard
-  , parseAndValidateState
-  , parseAndValidateOrders
-  , printActiveOrders
+{-# LANGUAGE NoImplicitPrelude #-}
+module Validate 
+  ( checkDuplicates
+  , getExecutableOrders
+  , getExecutableRetreatOrders
+  , getExecutableBuildOrders
   ) where
-
+  
 import Board
 import BState
-import Spaces
-import Units
-import Orders
+import Space
+import Order
+import Error
+import Unit
+import Util
 import Parse
-import Errors
-import Utils
 import RIO
-import qualified RIO.NonEmpty as NE ( toList )
-import qualified RIO.Map as M ( elems, empty, fromList, insert, lookup, toList )
-import qualified RIO.Set as S ( empty, insert, member )
-import System.Environment
+import qualified RIO.Map as M ( adjust, elems, empty, filter, fromList, insert, lookup, toList, union )
+import qualified RIO.Set as S ( filter, member, toList )
 
--- actual validation
-validateOrderUniqueness :: Set (Unit, Space) -> [Order] -> Validated [Order]
-validateOrderUniqueness _ [] = Valid []
-validateOrderUniqueness orderedUnits (o:os) = 
-  let (u, s)      = getOrderedUnit o
-      validatedOs = validateOrderUniqueness (S.insert (u, s) orderedUnits) os
-  in case S.member (u, s) orderedUnits of
-       False -> (:) o <$> validatedOs
-       True  -> ValidationError $ "Multiple orders for '" ++ show u ++ "', '" ++ show s ++ "'."
 
-validateOrders :: [Order] -> Validated [Order]
-validateOrders = validateOrderUniqueness S.empty
-
--- parsing files and printing result
-printValidatedT :: Show a => ValidatedT IO a -> IO ()
-printValidatedT (ValidatedT ioa) = ioa >>= print
-
-printValidatedList :: Show a => Validated [a] -> IO ()
-printValidatedList (Valid l) = putStrLn . unlines . fmap show $ l
-printValidatedList x         = print x
-
-printValidatedTList :: Show a => ValidatedT IO [a] -> IO ()
-printValidatedTList (ValidatedT ioa) = ioa >>= printValidatedList
-
-parseAndValidateBoard' :: String -> ValidatedT IO Board
-parseAndValidateBoard' fn = do
-  boardData <- ValidatedT $ parseValidatedFromFile parseBoardData fn
-  ValidatedT . return $ uncurry3 mkBoard boardData
-
-parseAndValidateBoard :: String -> IO ()
-parseAndValidateBoard = printValidatedT . parseAndValidateBoard'
-
-parseAndValidateState' :: String -> Board -> ValidatedT IO BState
-parseAndValidateState' fn board = do
-  board <- parseAndValidateBoard' "board.txt"
-  gameStateData <- ValidatedT $ parseValidatedFromFile (parseStateData board) fn
-  ValidatedT . return $ uncurry4 (mkBState board) gameStateData
-
-parseAndValidateState :: String -> IO ()
-parseAndValidateState fn = printValidatedT $ parseAndValidateBoard' "board.txt" >>= parseAndValidateState' fn
-
-parseAndValidateOrders :: String -> IO ()
-parseAndValidateOrders fn = printValidatedTList $
-  parseAndValidateBoard' "board.txt" >>= \b ->
-    parseAndValidateState' "state.txt" b >>= parseAndValidateOrders' fn b
-
--- mapped to string to print list of orders in the
-parseAndValidateOrders' :: String -> Board -> BState -> ValidatedT IO [Order]
-parseAndValidateOrders' fn board state = do
-  orders <- ValidatedT $ parseValidatedFromFile (parseOrders board state) fn
-  ValidatedT . return . validateOrders $ orders
-
+-- orders
+checkDuplicates :: [Order] -> Validated [Order]
+checkDuplicates = fmap S.toList . safeToSet
 
 swap :: (a, b) -> (b, a)
 swap (a, b) = (b, a)
 
-initialOrders :: BState -> Map (Unit, Space) Order
-initialOrders = M.fromList . fmap ((\x -> (x, uncurry Order x Hold)) . swap) . M.toList . occupiers
+-- by default hold for all units
+initialOrders :: BState -> Map Space Order
+initialOrders = M.fromList
+              . fmap (\x -> (fst x, uncurry Order (swap x) Hold))
+              . M.toList . occupiers
 
-foldValidOrders :: [String] -> Map (Unit, Space) Order -> Board -> BState -> Map (Unit, Space) Order
-foldValidOrders []                 m _     _     = m
-foldValidOrders (orderString:rest) m board state = case parseValidated (parseOrder board state) orderString of
-  Valid order -> foldValidOrders rest (M.insert (orderUnit order, orderSpace order) order m) board state
-  _           -> foldValidOrders rest m board state
+insertValidOrder :: BState -> Map Space Order -> String -> Map Space Order
+insertValidOrder state m orderString = case parseValidated (parseOrder state) orderString of
+  Valid order -> M.insert (orderSpace order) order m
+  _           -> m
 
-printActiveOrders' :: String -> ValidatedT IO [Order]
-printActiveOrders' fn = do
-  board <- parseAndValidateBoard' "board.txt"
-  state <- parseAndValidateState' "state.txt" board
-  orderStrings <- ValidatedT $ Valid . lines <$> readFile fn
-  return . M.elems . foldValidOrders orderStrings (initialOrders state) board $ state
+-- map space order ensures that each unit has the newest order at the end
+foldValidOrders :: BState -> [String] -> Map Space Order
+foldValidOrders state = foldl' (insertValidOrder state) (initialOrders state)
 
-printActiveOrders :: String -> IO ()
-printActiveOrders fn = printValidatedTList $ printActiveOrders' fn
+getExecutableOrders :: BState -> [String] -> Validated [Order]
+getExecutableOrders state = Valid . M.elems . foldValidOrders state
+
+
+-- retreat orders
+dislodgedUnitToDisbandOrder :: DislodgedUnit -> (Space, RetreatOrder)
+dislodgedUnitToDisbandOrder = 
+  (,) <$> dislodgedAt <*> (RODisband <$> dislodgedUnit <*> dislodgedAt)
+
+-- by default disband every unit
+initialRetreatOrders :: Set DislodgedUnit -> Map Space RetreatOrder
+initialRetreatOrders =
+  M.fromList . fmap dislodgedUnitToDisbandOrder . S.toList 
+
+insertValidRO :: BState -> Map Space RetreatOrder -> String -> Map Space RetreatOrder
+insertValidRO state m ro = case parseValidated (parseRetreatOrder state) ro of
+    Valid retreat -> M.insert (retreatOrderAt retreat) retreat m
+    _             -> m
+
+-- map space RO ensures that each unit has the newest RO at the end
+foldValidRetreatOrders :: BState -> [String] -> Map Space RetreatOrder
+foldValidRetreatOrders state = foldl' (insertValidRO state) M.empty
+
+commuteValidMaybe :: Maybe (Validated a) -> Validated (Maybe a)
+commuteValidMaybe (Just (Valid a))           = Valid (Just a)
+commuteValidMaybe Nothing                    = Valid Nothing 
+commuteValidMaybe (Just (ValidationError e)) = ValidationError e
+commuteValidMaybe (Just (ParsingError e))    = ParsingError e
+
+-- find area for a retreat order, Nothing for a Disband order
+areaForRetreatOrder :: Board -> RetreatOrder -> Validated (Maybe Area)
+areaForRetreatOrder board = commuteValidMaybe . fmap (findArea board) . retreatOrderTo
+
+addIfAreaValid :: Board -> (Space, RetreatOrder) -> Validated [(Space, RetreatOrder, Maybe Area)] -> Validated [(Space, RetreatOrder, Maybe Area)]
+addIfAreaValid board (spc, ro) = case areaForRetreatOrder board ro of
+  (Valid ma)          -> fmap ((spc, ro, ma) :)
+  (ValidationError e) -> const (ValidationError e)
+  (ParsingError e)    -> const (ParsingError e)
+
+-- keep orders for which retreat to refers to a space that belongs to an area
+validateRetreatToAreas :: Board -> [(Space, RetreatOrder)] -> Validated [(Space, RetreatOrder, Maybe Area)]
+validateRetreatToAreas board = foldr (addIfAreaValid board) (Valid [])
+
+-- find orders with duplicated retreat to -areas
+findDuplicateAreas :: [(Space, RetreatOrder, Maybe Area)] -> Set (Maybe Area)
+findDuplicateAreas = S.filter (/= Nothing) . getDuplicates . fmap (\(a,b,c) -> c)
+
+nonDuplicateAreas :: Board -> [(Space, RetreatOrder, Maybe Area)] -> [(Space, RetreatOrder)]
+nonDuplicateAreas board l = let dupl = findDuplicateAreas l
+  in fmap (\(s, ro, _) -> (s, ro)) . filter (\(s, ro, ma) -> S.member ma dupl) $ l
+
+removeRetreatsToSameArea :: Board -> Map Space RetreatOrder -> Validated (Map Space RetreatOrder)
+removeRetreatsToSameArea board = fmap (M.fromList . nonDuplicateAreas board)
+                               . validateRetreatToAreas board . M.toList
+
+addToInitials :: BState -> Map Space RetreatOrder -> Map Space RetreatOrder
+addToInitials state m = M.union m . initialRetreatOrders . dislodgedUnits $ state
+
+-- remove orders that retreat to the same area after folding, which removes duplicates
+getExecutableRetreatOrders :: BState -> [String] -> Validated [RetreatOrder]
+getExecutableRetreatOrders state = fmap (M.elems . addToInitials state)
+                                 . removeRetreatsToSameArea (gameBoard state)
+                                 . foldValidRetreatOrders state
+
+
+-- build orders
+takeNOccupiedSpaces :: Country -> Int -> BState -> [(Country, Space)]
+takeNOccupiedSpaces c i = fmap ((,) c) . take i . fmap fst
+                        . M.toList . M.filter ((==) c . unitCountry) . occupiers
+
+-- initially disband units if one must
+initialBuildOrders :: BState -> [(Country, BuildOrder)]
+initialBuildOrders state = fmap (\(c,spc) -> (c, BODisband c spc)) . join
+                         . fmap (\(c,i) -> takeNOccupiedSpaces c (-i) state)
+                         . filter ((>) 0 . snd) 
+                         . M.toList . unitDifference $ state
+
+insertValidBuildOrder :: BState -> String -> [(Country, BuildOrder)] -> [(Country, BuildOrder)]
+insertValidBuildOrder state bo = case parseValidated (parseBuildOrder state) bo of
+  (Valid bo) -> (:) (buildOrderCountry bo, bo)
+  _          -> id
+
+foldValidBuildOrders :: BState -> [String] -> [(Country, BuildOrder)]
+foldValidBuildOrders state = foldr (insertValidBuildOrder state) []
+
+-- take N first orders for each country, where the N is controlled-occupied
+takeNFirst :: Map Country Int -> [(Country, BuildOrder)] -> Validated [(Country, BuildOrder)]
+takeNFirst m []             = Valid []
+takeNFirst m ((c, bo):rest) = case (fmap (compare 0) . M.lookup c $ m, bo) of
+  (Just EQ, _)               -> takeNFirst m rest
+  (Just LT, BOBuild _ _ _) -> (:) (c, bo) <$> takeNFirst (M.adjust (+ (-1)) c m) rest
+  (Just GT, BODisband _ _) -> (:) (c, bo) <$> takeNFirst (M.adjust (+ 1) c m) rest
+  (Nothing, _)               -> ValidationError "Build order for country that has equal amount of supply centers and units"
+  _                          -> ValidationError "Invalid build order type"
+
+
+getExecutableBuildOrders :: BState -> [String] -> Validated [BuildOrder]
+getExecutableBuildOrders state =
+    fmap (fmap snd)
+  . takeNFirst (M.filter (/= 0) . unitDifference $ state)
+  -- add all valid parsed orders after initial build orders
+  -- and then take n first starting from the end of the list
+  . reverse
+  . (initialBuildOrders state <>)
+  . foldValidBuildOrders state
 

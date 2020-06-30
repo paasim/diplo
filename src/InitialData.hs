@@ -4,12 +4,12 @@ module InitialData
   , initialState
   ) where
 
+import Error
+import Util
 import Board
 import BState
 import Parse
 import Validate
-import Errors
-import Utils
 import RIO
 
 spaces = unlines
@@ -17,23 +17,38 @@ spaces = unlines
     ["NAO, Ocean","NWG, Ocean","BAR, Ocean","NTH, Ocean","IRI, Ocean","SKA, Ocean"
     ,"ENG, Ocean","HEL, Ocean","MAO, Ocean","BAL, Ocean","BOT, Ocean","BLA, Ocean"
     ,"WES, Ocean","LYO, Ocean","TYS, Ocean","ION, Ocean","ADR, Ocean","AEG, Ocean","EAS, Ocean"
-    ,"Cly, Coast","Edi, Coast [SC]","Lvp, Coast [SC]","Yor, Coast","Wal, Coast","Lon, Coast [SC]" --Eng
+     --Eng
+    ,"Cly, Coast","Edi, Coast [SC, England]","Lvp, Coast [SC, England]"
+    ,"Yor, Coast","Wal, Coast","Lon, Coast [SC, England]" 
      --Gray
-    ,"Bel, Coast [SC]","Hol, Coast [SC]","Den, Coast [SC]","Swe, Coast [SC]","Nwy, Coast [SC]"
-    ,"Fin, Coast","SpaL, Land","SpaNC, Coast","SpaSC, Coast","BulL, Land","BulEC, Coast","BulSC, Coast"
-    ,"Por, Coast [SC]","Naf, Coast","Tun, Coast [SC]","Alb, Coast","Ser, Land [SC]","Gre, Coast [SC]"
-    ,"Rum, Coast [SC]"
-    ,"StpL, Land","StpNC, Coast","StpSC, Coast","Lvn, Coast","Mos, Land [SC]","War, Land [SC]"
-    ,"Ukr, Land","Sev, Coast [SC]" --Rus
-    ,"Bre, Coast [SC]","Pic, Coast","Par, Land [SC]","Bur, Land","Gas, Coast","Mar, Coast [SC]"  --Fra
-    ,"Kie, Coast [SC]","Ber, Coast [SC]","Pru, Coast","Ruh, Land","Mun, Land [SC]","Sil, Land" --Ger
-    ,"Tyr, Land","Boh, Land","Gal, Land","Vie, Land [SC]","Bud, Land [SC]","Tri, Coast [SC]" --Aus
-    ,"Pie, Coast","Tus, Coast","Ven, Coast [SC]","Rom, Coast [SC]","Apu, Coast","Nap, Coast [SC]" --Ita
-    ,"Arm, Coast","Ank, Coast [SC]","Con, Coast [SC]","Smy, Coast [SC]","Syr, Coast" --Tur
+    ,"Bel, Coast [SC, Common]","Hol, Coast [SC, Common]","Den, Coast [SC, Common]"
+    ,"Swe, Coast [SC, Common]","Nwy, Coast [SC, Common]","Fin, Coast"
+    ,"SpaNC, Coast","SpaSC, Coast","BulEC, Coast","BulSC, Coast"
+    ,"Por, Coast [SC, Common]","Naf, Coast","Tun, Coast [SC, Common]","Alb, Coast"
+    ,"Ser, Land [SC, Common]","Gre, Coast [SC, Common]","Rum, Coast [SC, Common]"
+     --Rus
+    ,"StpNC, Coast","StpSC, Coast","Lvn, Coast","Mos, Land [SC, Russia]"
+    ,"War, Land [SC, Russia]","Ukr, Land","Sev, Coast [SC, Russia]"
+     --Fra
+    ,"Bre, Coast [SC, France]","Pic, Coast","Par, Land [SC, France]","Bur, Land"
+    ,"Gas, Coast","Mar, Coast [SC, France]"
+     --Ger
+    ,"Kie, Coast [SC, Germany]","Ber, Coast [SC, Germany]","Pru, Coast","Ruh, Land"
+    ,"Mun, Land [SC, Germany]","Sil, Land"
+     --Aus
+    ,"Tyr, Land","Boh, Land","Gal, Land","Vie, Land [SC, Austria]"
+    ,"Bud, Land [SC, Austria]","Tri, Coast [SC, Austria]"
+     --Ita
+    ,"Pie, Coast","Tus, Coast","Ven, Coast [SC, Italy]","Rom, Coast [SC, Italy]"
+    ,"Apu, Coast","Nap, Coast [SC, Italy]"
+     --Tur
+    ,"Arm, Coast","Ank, Coast [SC, Turkey]","Con, Coast [SC, Turkey]"
+    ,"Smy, Coast [SC, Turkey]","Syr, Coast"
     ]
 
+-- foldmap?
 routes = unlines $
-  fmap (++ " [F]")
+  fmap (<> " [F]")
   -- Oceans
     ["NAO-NWG","NAO-Cly","NAO-Lvp","NAO-IRI","NAO-MAO"
     ,"NWG-Cly","NWG-Edi","NWG-NTH","NWG-Nwy","NWG-BAR"
@@ -52,29 +67,28 @@ routes = unlines $
     ,"ION-Alb","ION-Gre","ION-AEG","ION-EAS","ION-Nap","ION-Apu"
     ,"AEG-Con","AEG-Smy","AEG-EAS","AEG-Gre","AEG-BulSC"
     ,"BLA-Sev","BLA-Arm","BLA-Ank","BLA-Con","BLA-BulEC","BLA-Rum","EAS-Syr","EAS-Smy"
-    --Coasts
-    ,"Con-BulEC","Con-BulSC","BulSC-Gre","Nwy-StpNC","StpSC-Fin","Mar-SpaSC","SpaNC-Gas"
-    ,"StpSC-Lvn","BulEC-Rum","SpaNC-Por"
     ] 
-  ++ fmap (++ " [C]")
-      ["BAR-StpL","BOT-StpL","BOT-BAL","NTH-HEL" ,"MAO-SpaL","WES-SpaL","LYO-SpaL","AEG-BulL","BLA-BulL"]
-  ++ fmap (++ " [B]")
+  <> fmap (<> " [C]")
+      ["BAR-StpSC","BOT-StpNC","BOT-BAL","NTH-HEL","WES-SpaNC"
+      ,"LYO-SpaNC","AEG-BulEC","BLA-BulSC"]
+  <> fmap (<> " [B]")
       ["Cly-Edi","Edi-Yor","Yor-Lon","Lon-Wal","Wal-Lvp","Lvp-Cly" --Eng
-      ,"Sev-Arm","Sev-Rum","Lvn-Pru" --Rus
+      ,"Sev-Arm","Sev-Rum","Lvn-Pru","StpNC-Nwy","StpSC-Lvn","StpSC-Fin" --Rus
       ,"Arm-Ank","Syr-Smy","Smy-Con","Ank-Con" --Tur
       ,"Tri-Alb","Tri-Ven" --Aus
       ,"Ven-Apu","Apu-Nap","Nap-Rom","Rom-Tus","Tus-Pie","Pie-Mar" --Ita
-      ,"Gas-Bre","Bre-Pic","Pic-Bel" --Fra
-      ,"Bel-Hol","Hol-Kie","Den-Swe","Den-Kie","Swe-Nwy","Swe-Fin","Gre-Alb","Naf-Tun"--gray
+      ,"Mar-SpaSC","Gas-SpaNC","Gas-Bre","Bre-Pic","Pic-Bel" --Fra
+      ,"Bel-Hol","Hol-Kie","Den-Swe","Den-Kie","Swe-Nwy","Swe-Fin","Gre-Alb"
+      ,"BulEC-Rum","BulEC-Con","BulSC-Con","BulSC-Gre","Naf-Tun","SpaNC-Por","SpaSC-Por"--gray
       ,"Kie-Ber","Kie-Pru"--Ger
       ]
-  ++ fmap (++ " [A]")
+  <> fmap (<> " [A]")
      ["Edi-Lvp","Lvp-Yor","Yor-Wal"-- Eng
-     ,"Nwy-StpL","Nwy-Fin","Hol-Ruh","Bel-Ruh","Bel-Bur","Por-SpaL","SpaL-Gas","SpaL-Mar"
-     ,"Alb-Ser","Ser-Rum","Ser-BulL","Ser-Gre","Gre-BulL","BulL-Rum","BulL-Con","Rum-Bud"
-     ,"Rum-Gal","Rum-Ukr" --gray
+     ,"Nwy-StpSC","Nwy-Fin","Hol-Ruh","Bel-Ruh","Bel-Bur","SpaSC-Gas","SpaNC-Mar"
+     ,"Alb-Ser","Ser-Rum","Ser-BulEC","Ser-BulSC","Ser-Gre","BulSC-Rum","BulEC-Gre"
+     ,"Rum-Bud","Rum-Gal","Rum-Ukr" --gray
       --Rus
-     ,"StpL-Mos","StpL-Lvn","StpL-Fin","Mos-Sev","Mos-Ukr","Mos-War","Mos-Lvn"
+     ,"StpNC-Mos","StpSC-Mos","StpNC-Lvn","StpNC-Fin","Mos-Sev","Mos-Ukr","Mos-War","Mos-Lvn"
      ,"Sev-Ukr","Ukr-Gal","Ukr-War","War-Gal","War-Sil","War-Pru","War-Lvn"
      ,"Arm-Syr","Arm-Smy","Smy-Ank"--Tur
       --Aus
@@ -88,11 +102,12 @@ routes = unlines $
      ]
 
 areas = unlines
-  ["Spa: SpaL~SpaNC~SpaSC [SC]","Bul: BulL~BulEC~BulSC [SC]","Stp: StpL~StpNC~StpSC [SC]"]
+  ["Spa: SpaNC~SpaSC [SC, Common]","Bul: BulEC~BulSC [SC, Common]"
+  ,"Stp: StpNC~StpSC [SC, Russia]"]
 
-boardString = "Spaces:\n" ++ spaces ++ "\n\n" 
-           ++ "Routes:\n" ++ routes ++ "\n\n"
-           ++ "Areas:\n"  ++ areas  ++ "\n"
+boardString = "Spaces:\n" <> spaces <> "\n"
+           <> "Routes:\n" <> routes <> "\n"
+           <> "Areas:\n"  <> areas
   
 initialBoard = parseValidated parseBoardData boardString >>= uncurry3 mkBoard
 
@@ -109,15 +124,18 @@ controlledString = unlines
   ["Edi, controlled by Eng","Lvp, controlled by Eng","Lon, controlled by Eng"
   ,"Bre, controlled by Fra","Par, controlled by Fra","Mar, controlled by Fra"
   ,"Kie, controlled by Ger","Ber, controlled by Ger","Mun, controlled by Ger"
-  ,"Pie, controlled by Ita","Rom, controlled by Ita","Nap, controlled by Ita"
-  ,"Tri, controlled by Aus","Vie, controlled by Aus","Bud, controlled by Ita"
+  ,"Ven, controlled by Ita","Rom, controlled by Ita","Nap, controlled by Ita"
+  ,"Tri, controlled by Aus","Vie, controlled by Aus","Bud, controlled by Aus"
   ,"Con, controlled by Tur","Ank, controlled by Tur","Smy, controlled by Tur"
   ,"Stp, controlled by Rus","Mos, controlled by Rus","War, controlled by Rus", "Sev, controlled by Rus"
   ]
 
-stateString = "1901 Spring, status:" ++ "\n\n"
-  ++ "Spaces:\n" ++ occupiedString ++ "\n\n"
-  ++ "Areas:\n" ++ controlledString ++ "\n"
+dislodgedString = unlines []
+
+stateString = "Spring 1901, status:" <> "\n\n"
+  <> "Spaces:\n" <> occupiedString <> "\n"
+  <> "Areas:\n" <> controlledString <> "\n"
+  <> "Dislodged units:\n" <> dislodgedString
 
 initialState = do
   board <- initialBoard
