@@ -152,6 +152,6 @@ Lvp, occupied by England Army
 - Functionality to infer which orders will be executed
 - Better error messages, e.g. when trying to issue a support order when no units are nearby
 
-[diplomacy]: https://en.wikipedia.org/wiki/Diplomacy
+[diplomacy]: https://en.wikipedia.org/wiki/Diplomacy_(game)
 [stack]: https://github.com/commercialhaskell/stack
 
