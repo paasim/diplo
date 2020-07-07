@@ -25,7 +25,7 @@ import Parse
 import Validate
 import InitialData 
 import RIO
-import qualified RIO.List as L ( sort )
+import qualified RIO.List as L
 import System.Environment
 
 

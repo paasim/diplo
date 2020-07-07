@@ -20,10 +20,10 @@ import BState
 import Error
 import Util
 import RIO
-import qualified RIO.List as L ( (\\), delete, elem, notElem, partition )
-import qualified RIO.Map as M ( elems, filter, keys, lookup, member, toList )
-import qualified RIO.Set as S ( filter, fromList, map, member, singleton, toList )
-import qualified RIO.NonEmpty as NE ( last )
+import qualified RIO.List as L
+import qualified RIO.Map as M
+import qualified RIO.Set as S
+import qualified RIO.NonEmpty as NE
 import Text.Trifecta 
 import qualified Text.Parser.Combinators as Comb ( try )
 

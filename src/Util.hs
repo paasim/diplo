@@ -3,8 +3,8 @@ module Util where
 
 import Error
 import RIO
-import qualified RIO.Map as M ( empty, insert, member )
-import qualified RIO.Set as S ( empty, filter, fromList, insert, lookupMin, member, size )
+import qualified RIO.Map as M
+import qualified RIO.Set as S
 
 -- utility functions
 toListChecker :: (a -> Validated a) -> [a] -> Validated [a]

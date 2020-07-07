@@ -14,9 +14,9 @@ module Space
 import Error
 import Util
 import RIO
-import qualified RIO.List as L ( intercalate )
-import qualified RIO.NonEmpty as NE ( toList )
-import qualified RIO.Set as S ( member, singleton, toList )
+import qualified RIO.List as L
+import qualified RIO.NonEmpty as NE
+import qualified RIO.Set as S
 
 -- Spaces and related functions
 data SpaceType = Land | Ocean | Coast deriving (Eq, Ord, Show)
@@ -32,13 +32,6 @@ instance Eq Space where
 instance Ord Space where
   (<=) s1 s2 = spaceName s1 <= spaceName s2
 
-data RouteType = ArmyOnly | FleetOnly | BothUnits | ConvoyOnly deriving (Eq, Ord)
-
-instance Show RouteType where
-  show ArmyOnly = "[A]"
-  show FleetOnly = "[F]"
-  show BothUnits = "[B]"
-  show ConvoyOnly = "[C]"
 
 -- neighbors aka "routes" are represented as unordered pairs
 -- e.g. (a,b) is equivalent to (b, a)
@@ -62,6 +55,16 @@ instance Eq Route where
 instance Ord Route where
   (<=) route1 route2 = minSpace route1 < minSpace route2
     || (minSpace route1 == minSpace route2 && maxSpace route1 <= maxSpace route2)
+
+
+-- this is mainly needed for convoy paths
+data RouteType = ArmyOnly | FleetOnly | BothUnits | ConvoyOnly deriving (Eq, Ord)
+
+instance Show RouteType where
+  show ArmyOnly = "[A]"
+  show FleetOnly = "[F]"
+  show BothUnits = "[B]"
+  show ConvoyOnly = "[C]"
 
 -- A specific type for convoy path
 data ConvoyPath = ConvoyPath { cpVia :: NonEmpty Space

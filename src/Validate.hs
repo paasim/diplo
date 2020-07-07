@@ -6,17 +6,17 @@ module Validate
   , getExecutableBuildOrders
   ) where
   
-import Board
-import BState
-import Space
-import Order
 import Error
 import Unit
 import Util
+import Space
+import Order
+import Board
+import BState
 import Parse
 import RIO
-import qualified RIO.Map as M ( adjust, elems, empty, filter, fromList, insert, lookup, toList, union )
-import qualified RIO.Set as S ( filter, member, toList )
+import qualified RIO.Map as M
+import qualified RIO.Set as S
 
 
 -- orders

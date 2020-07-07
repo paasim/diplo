@@ -18,9 +18,9 @@ import Space
 import Order
 import Board
 import RIO
-import qualified RIO.List as L ( sortBy, union )
-import qualified RIO.Map as M ( delete, elems, fromList, insert, lookup, map, member, toList )
-import qualified RIO.Set as S ( filter, insert, null, toList )
+import qualified RIO.List as L
+import qualified RIO.Map as M
+import qualified RIO.Set as S
 
 -- Game state and related functions
 -- named BState to avoid confusion with the regular State type
