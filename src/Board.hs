@@ -12,8 +12,8 @@ import Util
 import Space
 import Order
 import RIO
-import qualified RIO.Set as S ( empty, filter, insert, notMember, toAscList, union )
-import qualified RIO.Map as M ( lookup, toList )
+import qualified RIO.Set as S
+import qualified RIO.Map as M
 
 -- this is for indicating which supply centers can be used for 
 data SupplyOrigin = Common | HomeSupply Country deriving (Eq, Ord)
