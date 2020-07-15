@@ -8,7 +8,6 @@ module Space
   , Route (..)
   , RouteType (..)
   , ConvoyPath (..)
-  , cpWithoutDuplicates
   ) where
 
 import Error
@@ -75,15 +74,6 @@ showMid (s1 :| s2) = unwords . fmap spaceName $ s1:s2
 
 instance Show ConvoyPath where
   show (ConvoyPath cpvia to) = "via " <> showMid cpvia <> " to " <> spaceName to
-
-viaWithoutDuplicates cp = safeToSet (NE.toList . cpVia $ cp) *> return cp
-
-endPointWithoutDuplicates spcFrom cp = case spcFrom == cpTo cp of
-  True  -> ValidationError "The convoy path cannot start from and end to the same space."
-  False -> Valid cp
-
-cpWithoutDuplicates :: Space -> ConvoyPath -> Validated ConvoyPath
-cpWithoutDuplicates spc = endPointWithoutDuplicates spc >=> viaWithoutDuplicates
 
 -- Area is a concept for places with multiple coasts
 -- so that in some sense there are multiple spaces in the same area
