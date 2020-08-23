@@ -32,7 +32,7 @@ instance Monad Validated where
 extractErrDoc (ErrInfo errDoc _) = errDoc
 
 instance Show a => Show (Validated a) where
-  show (Valid a)             = show a <> "\n"
+  show (Valid a)             = show a
   show (ParsingError e)      = show (extractErrDoc e) <> "\n"
   show (ValidationError s) = "Validation errors:\n" <> s
 

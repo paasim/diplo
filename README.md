@@ -85,7 +85,7 @@ Germany Fleet Kie to Den
 Germany Army Ber to Kie
 
 
-$ # Typo in the unit/space, Austria has armies only in Bud and Vie
+$ # Typo in the unit/province, Austria has armies only in Bud and Vie
 $ cat order_error1.txt
 Aus F Vie-Gal
 $ diplo-exe orders check orders2.txt

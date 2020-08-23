@@ -7,35 +7,35 @@ module Order
   ) where
 
 import Unit
-import Space
+import Province
 import RIO
 
 -- order referes to a regular movement phase order
 data OrderData = Hold
-               | Attack Space
-               | SuppHold Unit Space
-               | SuppAttack Unit Space Space
-               | Convoy Unit Space Space
+               | Attack Province
+               | SuppHold Unit Province
+               | SuppAttack Unit Province Province
+               | Convoy Unit Province Province
                | AttackViaConvoy ConvoyPath deriving (Eq, Ord)
 
 
 instance Show OrderData where
   show Hold = "holds"
-  show (Attack spc) = "to " <> spaceName spc
+  show (Attack spc) = "to " <> provinceName spc
   show (SuppHold u spc) = "supports (" <> show (Order u spc Hold) <> ")"
   show (SuppAttack u spc1 spc2) = "supports (" <> show (Order u spc1 (Attack spc2)) <> ")"
-  show (Convoy u1 spc1 spc2) = "convoys " <> show u1 <> " from " <> spaceName spc1 <> " to " <> spaceName spc2
+  show (Convoy u1 spc1 spc2) = "convoys " <> show u1 <> " from " <> provinceName spc1 <> " to " <> provinceName spc2
   show (AttackViaConvoy cp) = show cp
 
 data Order = Order { orderUnit :: Unit
-                   , orderSpace :: Space
+                   , orderProvince :: Province
                    , orderData :: OrderData } deriving (Eq, Ord)
 
 instance Show Order where
-  show (Order u spc od) = show u <> " " <> spaceName spc <> " " <> show od
+  show (Order u spc od) = show u <> " " <> provinceName spc <> " " <> show od
 
 -- retreat phase orders
-data RetreatOrder = RODisband Unit Space | RORetreat Unit Space Space deriving Eq
+data RetreatOrder = RODisband Unit Province | RORetreat Unit Province Province deriving Eq
 
 instance Show RetreatOrder where
   show (RODisband u spc) = show u <> " " <> show spc <> " disbands"
@@ -54,15 +54,15 @@ retreatOrderU :: RetreatOrder -> Unit
 retreatOrderU (RODisband u _)   = u
 retreatOrderU (RORetreat u _ _) = u
 
-retreatOrderAt :: RetreatOrder -> Space
+retreatOrderAt :: RetreatOrder -> Province
 retreatOrderAt (RODisband _ spc)    = spc
 retreatOrderAt (RORetreat _ spc _ ) = spc
 
-retreatOrderTo :: RetreatOrder -> Maybe Space
+retreatOrderTo :: RetreatOrder -> Maybe Province
 retreatOrderTo (RODisband _ _)     = Nothing
 retreatOrderTo (RORetreat _ _ spc) = Just spc
 
-data BuildOrder = BODisband Country Space | BOBuild Country Space UnitType deriving Eq
+data BuildOrder = BODisband Country Province | BOBuild Country Province UnitType deriving Eq
 
 instance Show BuildOrder where
   show (BOBuild c spc ut) = show c <> " builds " <> show spc <> " " <> show ut
@@ -72,7 +72,7 @@ buildOrderCountry :: BuildOrder -> Country
 buildOrderCountry (BOBuild c _ _ ) = c
 buildOrderCountry (BODisband c _ ) = c
 
-buildOrderAt :: BuildOrder -> Space
+buildOrderAt :: BuildOrder -> Province
 buildOrderAt (BOBuild _ spc _ ) = spc
 buildOrderAt (BODisband _ spc ) = spc
 
