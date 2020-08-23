@@ -55,6 +55,7 @@ instance Show Board where
   show board = "Provinces:\n" <> unlines (fmap show . S.toList . boardProvinces $ board)
     <> "\nRoutes:\n" <> unlines (fmap showPair . M.toList . boardRoutes $ board)
     <> "\nAreas:\n" <> unlines (fmap showAreaWithProvinces . L.nub . M.elems . boardAreas $ board)
+    <> "\n"
 
 mkSupplyCenters :: [(Province, Maybe SupplyOrigin)] -> Validated (Map Province SupplyOrigin)
 mkSupplyCenters = safeToMap . filterJust

@@ -88,7 +88,7 @@ instance Show BState where
     <> "\nProvinces:\n" <> unlines (showProvinceStates state)
     <> "\nAreas:\n"  <> unlines (showAreaStates state)
     <> "\nDislodged units:\n"
-    <> unlines (fmap show . S.toList . dislodgedUnits $ state)
+    <> unlines (fmap show . S.toList . dislodgedUnits $ state) <> "\n"
 
 -- how many countries either control an area or occupy a province with a unit
 countriesInGame :: BState -> [Country]

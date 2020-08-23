@@ -301,7 +301,7 @@ parseBoardData = do
   routes <- sepEndBy1 (parseNewRoute . fmap fst $ provs) newline
   string "\nAreas:\n"
   areas <- parseAreas . fmap fst $ provs
-  optional newline <* eof -- allow one extra newline at the end
+  eof
   return (provs, routes, areas)
 
 
@@ -343,7 +343,7 @@ parseStateData board = do
   areaStates <- sepEndBy1 (parseAreaStates board) newline
   string "\nDislodged units:\n"
   dislodgedUnits <- sepEndBy (parseDislodgedUnit board) newline
-  optional newline <* eof -- allow 1-2 extra newlines at the end
+  optional newline <* optional newline <* eof -- allow 1-2 extra newlines at the end
   return (phase, provinceStates, areaStates, dislodgedUnits)
   
 

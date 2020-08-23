@@ -43,11 +43,10 @@ deleteDislodgedUnit :: Province -> BState -> BState
 deleteDislodgedUnit prov = setDislodgedUnits (S.filter ((/=) prov . dislodgedAt))
 
 -- controllers
-addControllers :: Board -> Map Province Unit -> Map Province Country -> Map Province Country
+addControllers :: Board -> Map Province Unit -> Map Area Country -> Map Area Country
 addControllers board msu mac =
     foldr (uncurry M.insert) mac -- insert/update new controllers
-  . ungroupFst
-  . fmap (bimap (NE.toList . areaProvinces . toArea board) unitCountry) -- (prov,unit) from ([prov],country)
+  . fmap (bimap (toArea board) unitCountry) -- (area,unit) from ([prov],country)
   . filter (\(prov, unit) -> M.member prov (boardSupplyCenters board))
   . M.toList $ msu
 
