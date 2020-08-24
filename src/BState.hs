@@ -104,7 +104,7 @@ countDifference m1 m2 = (-) <$> fromMaybe 0 . flip M.lookup m1
 controllersMOccupiers :: BState -> Country -> Int
 controllersMOccupiers state =
   (countDifference <$> M.fromList . counts . M.elems . controllers
-                  <*> M.fromList . counts . fmap unitCountry . M.elems . occupiers) state
+                   <*> M.fromList . counts . fmap unitCountry . M.elems . occupiers) state
 
 -- difference in controlled areas and occupied units, needed for build/retreat phase
 unitDifference :: BState -> Map Country Int

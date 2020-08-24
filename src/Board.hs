@@ -51,8 +51,14 @@ data Board = Board { boardProvinces :: Set Province
                    , boardSupplyCenters :: Map Province SupplyOrigin
                    }
 
+showProvinceWithSC :: Board -> Province -> String
+showProvinceWithSC board prov = case M.lookup prov (boardSupplyCenters board) of
+  (Just so) -> show prov <> " [SC, " <> show so <> "]"
+  Nothing   -> show prov
+
 instance Show Board where
-  show board = "Provinces:\n" <> unlines (fmap show . S.toList . boardProvinces $ board)
+  show board =
+    "Provinces:\n" <> unlines (fmap (showProvinceWithSC board) . S.toList . boardProvinces $ board)
     <> "\nRoutes:\n" <> unlines (fmap showPair . M.toList . boardRoutes $ board)
     <> "\nAreas:\n" <> unlines (fmap showAreaWithProvinces . L.nub . M.elems . boardAreas $ board)
     <> "\n"

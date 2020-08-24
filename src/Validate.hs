@@ -65,7 +65,7 @@ foldValidRetreatOrders state = foldl' (insertValidRO state) M.empty
 nonDuplicateAreas :: Board -> [(Province, RetreatOrder, Maybe Area)] -> [(Province, RetreatOrder)]
 nonDuplicateAreas board l =
   let dupl = S.filter (Nothing /=) . getDuplicates . fmap (\(a,b,c) -> c) $ l
-  in fmap (\(s, ro, _) -> (s, ro)) . filter (\(s, ro, ma) -> S.member ma dupl) $ l
+  in fmap (\(s, ro, _) -> (s, ro)) . filter (\(s, ro, ma) -> S.notMember ma dupl) $ l
 
 removeRetreatsToSameArea :: Board -> Map Province RetreatOrder -> Map Province RetreatOrder
 removeRetreatsToSameArea board = M.fromList

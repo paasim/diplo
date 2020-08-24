@@ -55,7 +55,7 @@ $ # Validate generated state - this prints the state back to the user if the fil
 $ diplo-exe state check state.txt
 Spring 1901, status:
 
-Spaces:
+Provinces:
 Tri, occupied by Austria Fleet
 Bud, occupied by Austria Army
 Vie, occupied by Austria Army
@@ -134,7 +134,7 @@ $ mv state4.txt state.txt
 $ cat state.txt
 Spring 1902, status:
 
-Spaces:
+Provinces:
 Tri, occupied by Austria Fleet
 Ven, occupied by Austria Fleet
 Bud, occupied by Austria Army

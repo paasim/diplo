@@ -3,6 +3,7 @@ module Util where
 
 import Error
 import RIO
+import qualified RIO.List as L
 import qualified RIO.Map as M
 import qualified RIO.Set as S
 
@@ -51,7 +52,7 @@ insertNew aNew ((a,i):rest) = case compare aNew a of
   GT -> (a,i) : insertNew aNew rest
 
 counts :: Ord a => [a] -> [(a, Int)]
-counts = foldr insertNew []
+counts = foldr insertNew [] . L.sort
 
 getDuplicates :: Ord a => [a] -> Set a
 getDuplicates = S.fromList . fmap fst . filter (\(a, i) -> i > 1) . counts

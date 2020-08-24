@@ -12,7 +12,7 @@ import Parse
 import Validate
 import RIO
 
-spaces = unlines
+provinces = unlines
     -- Oceans
     ["NAO, Ocean","NWG, Ocean","BAR, Ocean","NTH, Ocean","IRI, Ocean","SKA, Ocean"
     ,"ENG, Ocean","HEL, Ocean","MAO, Ocean","BAL, Ocean","BOT, Ocean","BLA, Ocean"
@@ -105,7 +105,7 @@ routes = unlines $
 areas = unlines
   ["Spa: SpaNC~SpaSC","Bul: BulEC~BulSC","Stp: StpNC~StpSC"]
 
-boardString = "Provinces:\n" <> spaces <> "\n"
+boardString = "Provinces:\n" <> provinces <> "\n"
            <> "Routes:\n" <> routes <> "\n"
            <> "Areas:\n"  <> areas <> "\n"
   
@@ -140,6 +140,6 @@ stateString = "Spring 1901, status:" <> "\n\n"
 
 initialState = do
   board <- initialBoard
-  (year, phase, spaceStates, areaStates) <- parseValidated (parseStateData board) stateString 
-  mkBState board year phase spaceStates areaStates
+  (year, phase, provStates, areaStates) <- parseValidated (parseStateData board) stateString
+  mkBState board year phase provStates areaStates
 
