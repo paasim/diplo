@@ -12,7 +12,7 @@ import Parse
 import Validate
 import RIO
 
-spaces = unlines
+provinces = unlines
     -- Oceans
     ["NAO, Ocean","NWG, Ocean","BAR, Ocean","NTH, Ocean","IRI, Ocean","SKA, Ocean"
     ,"ENG, Ocean","HEL, Ocean","MAO, Ocean","BAL, Ocean","BOT, Ocean","BLA, Ocean"
@@ -23,11 +23,12 @@ spaces = unlines
      --Gray
     ,"Bel, Coast [SC, Common]","Hol, Coast [SC, Common]","Den, Coast [SC, Common]"
     ,"Swe, Coast [SC, Common]","Nwy, Coast [SC, Common]","Fin, Coast"
-    ,"SpaNC, Coast","SpaSC, Coast","BulEC, Coast","BulSC, Coast"
+    ,"SpaNC, Coast [SC, Common]","SpaSC, Coast [SC, Common]"
+    ,"BulEC, Coast [SC, Common]","BulSC, Coast [SC, Common]"
     ,"Por, Coast [SC, Common]","Naf, Coast","Tun, Coast [SC, Common]","Alb, Coast"
     ,"Ser, Land [SC, Common]","Gre, Coast [SC, Common]","Rum, Coast [SC, Common]"
      --Rus
-    ,"StpNC, Coast","StpSC, Coast","Lvn, Coast","Mos, Land [SC, Russia]"
+    ,"StpNC, Coast [SC, Russia]","StpSC, Coast [SC, Russia]","Lvn, Coast","Mos, Land [SC, Russia]"
     ,"War, Land [SC, Russia]","Ukr, Land","Sev, Coast [SC, Russia]"
      --Fra
     ,"Bre, Coast [SC, France]","Pic, Coast","Par, Land [SC, France]","Bur, Land"
@@ -102,12 +103,11 @@ routes = unlines $
      ]
 
 areas = unlines
-  ["Spa: SpaNC~SpaSC [SC, Common]","Bul: BulEC~BulSC [SC, Common]"
-  ,"Stp: StpNC~StpSC [SC, Russia]"]
+  ["Spa: SpaNC~SpaSC","Bul: BulEC~BulSC","Stp: StpNC~StpSC"]
 
-boardString = "Spaces:\n" <> spaces <> "\n"
+boardString = "Provinces:\n" <> provinces <> "\n"
            <> "Routes:\n" <> routes <> "\n"
-           <> "Areas:\n"  <> areas
+           <> "Areas:\n"  <> areas <> "\n"
   
 initialBoard = parseValidated parseBoardData boardString >>= uncurry3 mkBoard
 
@@ -127,18 +127,19 @@ controlledString = unlines
   ,"Ven, controlled by Ita","Rom, controlled by Ita","Nap, controlled by Ita"
   ,"Tri, controlled by Aus","Vie, controlled by Aus","Bud, controlled by Aus"
   ,"Con, controlled by Tur","Ank, controlled by Tur","Smy, controlled by Tur"
-  ,"Stp, controlled by Rus","Mos, controlled by Rus","War, controlled by Rus", "Sev, controlled by Rus"
+  ,"Stp, controlled by Rus","Mos, controlled by Rus"
+  ,"War, controlled by Rus", "Sev, controlled by Rus"
   ]
 
 dislodgedString = unlines []
 
 stateString = "Spring 1901, status:" <> "\n\n"
-  <> "Spaces:\n" <> occupiedString <> "\n"
+  <> "Provinces:\n" <> occupiedString <> "\n"
   <> "Areas:\n" <> controlledString <> "\n"
   <> "Dislodged units:\n" <> dislodgedString
 
 initialState = do
   board <- initialBoard
-  (year, phase, spaceStates, areaStates) <- parseValidated (parseStateData board) stateString 
-  mkBState board year phase spaceStates areaStates
+  (year, phase, provStates, areaStates) <- parseValidated (parseStateData board) stateString
+  mkBState board year phase provStates areaStates
 

@@ -3,17 +3,19 @@ module Board
   ( Board (..)
   , mkBoard
   , SupplyOrigin (..), supplyOriginToCountry
-  , findArea
+  , Area (..), toArea
   ) where
 
 import Error
 import Unit
 import Util
-import Space
+import Province
 import Order
 import RIO
-import qualified RIO.Set as S
+import qualified RIO.List as L
 import qualified RIO.Map as M
+import qualified RIO.NonEmpty as NE
+import qualified RIO.Set as S
 
 -- this is for indicating which supply centers can be used for 
 data SupplyOrigin = Common | HomeSupply Country deriving (Eq, Ord)
@@ -26,70 +28,56 @@ instance Show SupplyOrigin where
   show Common = "Common"
   show (HomeSupply c) = show c
 
+-- Area is a concept for certain provinces that cannot be occupied simultaneously
+-- ie. SC and NC of Spa and Stp and EC and SC of Bul
+data Area = Area { areaName :: String
+                 , areaProvinces :: NonEmpty Province } deriving (Eq, Ord)
+
+instance Show Area where
+  show = areaName
+
+showAreaProvinces :: Area -> String
+showAreaProvinces = L.intercalate "~" . fmap provinceName . NE.toList . areaProvinces
+
+showAreaWithProvinces :: Area -> String
+showAreaWithProvinces a = show a <> ": " <> showAreaProvinces a
+
 -- Definition of the boad and related functions
-data Board = Board { boardSpaces :: Set Space
+data Board = Board { boardProvinces :: Set Province
                    , boardRoutes :: Map Route RouteType
                    -- used to specify that an attack to a coast also attacks
                    -- to the corresponding land and vice versa
-                   , boardAreas :: Set Area 
-                   , boardSupplyCenters :: Map Area SupplyOrigin
+                   , boardAreas :: Map Province Area
+                   , boardSupplyCenters :: Map Province SupplyOrigin
                    }
 
--- prints space with supply info
-printArea :: Board -> Area -> String
-printArea board area = case M.lookup area (boardSupplyCenters board) of
-  (Just supplyOrigin) -> show area <> " [SC, " <> show supplyOrigin <> "]"
-  Nothing             -> show area
-
-showPair :: (Show a, Show b) => (a, b) -> String
-showPair (a, b) = show a <> " " <> show b
+showProvinceWithSC :: Board -> Province -> String
+showProvinceWithSC board prov = case M.lookup prov (boardSupplyCenters board) of
+  (Just so) -> show prov <> " [SC, " <> show so <> "]"
+  Nothing   -> show prov
 
 instance Show Board where
-  show board = "Spaces:\n" <> unlines (fmap show . S.toAscList . boardSpaces $ board)
+  show board =
+    "Provinces:\n" <> unlines (fmap (showProvinceWithSC board) . S.toList . boardProvinces $ board)
     <> "\nRoutes:\n" <> unlines (fmap showPair . M.toList . boardRoutes $ board)
-    <> "\nAreas:\n" <> unlines (fmap (printArea board) . S.toAscList . boardAreas $ board)
+    <> "\nAreas:\n" <> unlines (fmap showAreaWithProvinces . L.nub . M.elems . boardAreas $ board)
+    <> "\n"
 
--- add space if does not belong to multiple areas
--- maybe this could be separated into two parts, first check and then add
-checkArea :: Space -> Set Area -> Validated (Set Area)
-checkArea s sa = case length . S.filter (spaceInArea s) $ sa of
-  1 -> Valid sa
-  0 -> Valid $ S.insert (simpleAreaFromSpace s) sa
-  _ -> ValidationError $ "Space '" <> show s <> "' belongs to multiple areas."
+mkSupplyCenters :: [(Province, Maybe SupplyOrigin)] -> Validated (Map Province SupplyOrigin)
+mkSupplyCenters = safeToMap . filterJust
 
-addSpacesAsAreas :: [Space] -> Set Area -> Validated (Set Area)
-addSpacesAsAreas spcs sa = foldr (\spc -> (>>= checkArea spc)) (Valid sa) spcs
+mkBoardAreas :: [Area] -> Map Province Area
+mkBoardAreas = M.fromList . fmap swap . ungroupSnd . fmap ((,) <*> NE.toList . areaProvinces)
 
-mkAreas :: [(Area, a)] -> Validated (Set Area)
-mkAreas = safeToSet . fmap fst
+toArea :: Board -> Province -> Area
+toArea board prov = case M.lookup prov (boardAreas board) of
+  (Just area) -> area
+  Nothing     -> Area (provinceName prov) (prov :| [])
 
-spacesInAreas :: [Area] -> Set Space
-spacesInAreas = foldr (S.union . areaMembers) S.empty
-
--- spaces that are SupplyCenters and do not belong to an area
-spaceSCs :: [Area] -> [(Space, Maybe SupplyOrigin)] -> [(Space, SupplyOrigin)]
-spaceSCs areas = filter (flip S.notMember (spacesInAreas areas) . fst) . filterJust
-
-spaceToArea :: (Space, x) -> (Area, x)
-spaceToArea (s, x) = (simpleAreaFromSpace s, x)
-
--- Areas with SupplyOrigin and Spaces with SupplyOrigin that dont belong to an area
-mkSupplyCenters :: [(Space, Maybe SupplyOrigin)] -> [(Area, Maybe SupplyOrigin)] -> Validated (Map Area SupplyOrigin)
-mkSupplyCenters ss as = safeToMap $
-  filterJust as <> (fmap spaceToArea . spaceSCs (fmap fst as)) ss
-
--- this converts simlespaces to areas twice, onc in addSpacesAsAreas
--- and then once in mkSupplyCenters
-mkBoard :: [(Space, Maybe SupplyOrigin)] -> [(Route, RouteType)] -> [(Area, Maybe SupplyOrigin)] -> Validated Board
-mkBoard spaceList routeList areaList =
-  Board <$> (safeToSet . fmap fst) spaceList
+mkBoard :: [(Province, Maybe SupplyOrigin)] -> [(Route, RouteType)] -> [Area] -> Validated Board
+mkBoard provinceList routeList areaList =
+  Board <$> (safeToSet . fmap fst) provinceList
         <*> safeToMap routeList
-        <*> ((safeToSet . fmap fst) areaList >>= addSpacesAsAreas (fmap fst spaceList))
-        <*> mkSupplyCenters spaceList areaList
-
-findArea :: Board -> Space -> Validated Area
-findArea board spc = case getUnique (spaceInArea spc) . boardAreas $ board of
-  Just a  -> Valid a
-  Nothing -> ValidationError $ "Space " <> show spc
-                              <> " does not belong to a unique area."
+        <*> (return . mkBoardAreas) areaList
+        <*> mkSupplyCenters provinceList
 

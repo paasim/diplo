@@ -13,7 +13,7 @@ module Parse
   ) where
 
 import Order
-import Space
+import Province
 import Unit
 import Board
 import BState
@@ -74,7 +74,7 @@ parseAnyUnit = Unit <$> (parseAnyCountry <* space) <*> parseAnyUnitType
 newtype UnitFilter = UnitFilter { runUnitFilter :: Unit -> Bool }
 
 instance Semigroup UnitFilter where
-  UnitFilter f1 <> UnitFilter f2 = UnitFilter (\spc -> f1 spc && f2 spc)
+  UnitFilter f1 <> UnitFilter f2 = UnitFilter (\prov -> f1 prov && f2 prov)
 
 instance Monoid UnitFilter where
   mempty = UnitFilter (const True)
@@ -91,17 +91,17 @@ existingUnits = getUniques . M.elems . occupiers
 parseUnitWith :: UnitFilter -> BState -> Parser Unit
 parseUnitWith (UnitFilter f) = choice . fmap (Comb.try . unitToUnitParser) . filter f . existingUnits
 
--- spaces
+-- province
 parseName :: Parser String
 parseName = some letter
 
-parseSpecificSpaceType :: SpaceType -> Parser SpaceType
-parseSpecificSpaceType Land  = string "Land"  *> return Land
-parseSpecificSpaceType Ocean = string "Ocean" *> return Ocean
-parseSpecificSpaceType Coast = string "Coast" *> return Coast
+parseSpecificProvinceType :: ProvinceType -> Parser ProvinceType
+parseSpecificProvinceType Land  = string "Land"  *> return Land
+parseSpecificProvinceType Ocean = string "Ocean" *> return Ocean
+parseSpecificProvinceType Coast = string "Coast" *> return Coast
 
-parseAnySpaceType :: Parser SpaceType
-parseAnySpaceType = choice . fmap parseSpecificSpaceType $ [Land, Ocean, Coast]
+parseAnyProvinceType :: Parser ProvinceType
+parseAnyProvinceType = choice . fmap parseSpecificProvinceType $ [Land, Ocean, Coast]
 
 parseSpecificRoute :: RouteType -> Parser RouteType
 parseSpecificRoute ArmyOnly   = char 'A' *> return ArmyOnly
@@ -116,90 +116,91 @@ parseAnyRouteType = choice . fmap parseSpecificRoute
 toANameParser :: (a -> String) -> a -> Parser a
 toANameParser showA a = string (showA a) *> return a
 
-spaceToSpaceNameParser :: Space -> Parser Space
-spaceToSpaceNameParser = toANameParser spaceName
+provinceToProvinceNameParser :: Province -> Parser Province
+provinceToProvinceNameParser = toANameParser provinceName
 
 -- parse areaName given an area
 areaToAreaNameParser :: Area -> Parser Area 
-areaToAreaNameParser = toANameParser areaName
+areaToAreaNameParser = toANameParser show
 
-parseSpaceWith :: Board -> SpaceFilter -> Parser Space
-parseSpaceWith board (SpaceFilter f) = choice . fmap spaceToSpaceNameParser
-                                     . filter f . S.toList . boardSpaces $ board
+parseProvinceWith :: Board -> ProvinceFilter -> Parser Province
+parseProvinceWith board (ProvinceFilter f) = choice . fmap provinceToProvinceNameParser
+                                     . filter f . S.toList . boardProvinces $ board
 
--- for parsing spaces that match given criteria
-newtype SpaceFilter = SpaceFilter { runSpaceFilter :: Space -> Bool }
+-- for parsing provinces that match given criteria
+newtype ProvinceFilter = ProvinceFilter { runProvinceFilter :: Province -> Bool }
 
-instance Semigroup SpaceFilter where
-  SpaceFilter f1 <> SpaceFilter f2 = SpaceFilter (\spc -> f1 spc && f2 spc)
+instance Semigroup ProvinceFilter where
+  ProvinceFilter f1 <> ProvinceFilter f2 = ProvinceFilter (\prov -> f1 prov && f2 prov)
 
-instance Monoid SpaceFilter where
-  mempty = SpaceFilter (const True)
+instance Monoid ProvinceFilter where
+  mempty = ProvinceFilter (const True)
 
-spaceTypeFilter :: SpaceType -> SpaceFilter
-spaceTypeFilter st = SpaceFilter $ \spc -> spaceType spc == st
+provinceTypeFilter :: ProvinceType -> ProvinceFilter
+provinceTypeFilter st = ProvinceFilter $ \prov -> provinceType prov == st
 
-unitTypeSpaceFilter :: UnitType -> SpaceFilter
-unitTypeSpaceFilter Army = SpaceFilter $
-  \spc -> spaceType spc == Land || spaceType spc == Coast
-unitTypeSpaceFilter Fleet = SpaceFilter $ \spc -> spaceType spc /= Land
+unitTypeProvinceFilter :: UnitType -> ProvinceFilter
+unitTypeProvinceFilter Army = ProvinceFilter $
+  \prov -> provinceType prov == Land || provinceType prov == Coast
+unitTypeProvinceFilter Fleet = ProvinceFilter $ \prov -> provinceType prov /= Land
 
-occupiedBy :: BState -> Unit -> SpaceFilter
-occupiedBy state unit1 = SpaceFilter $ \spc -> case M.lookup spc (occupiers state) of
+occupiedBy :: BState -> Unit -> ProvinceFilter
+occupiedBy state unit1 = ProvinceFilter $ \prov -> case M.lookup prov (occupiers state) of
   Just unit2 -> unit1 == unit2
   Nothing    -> False
 
-occupied :: BState -> SpaceFilter
-occupied state = SpaceFilter (\spc -> M.member spc . occupiers $ state)
+occupied :: BState -> ProvinceFilter
+occupied state = ProvinceFilter (\prov -> M.member prov . occupiers $ state)
 
-unOccupied :: BState -> SpaceFilter
-unOccupied state = SpaceFilter (\spc -> not . M.member spc . occupiers $ state)
+unOccupied :: BState -> ProvinceFilter
+unOccupied state = ProvinceFilter (\prov -> not . M.member prov . occupiers $ state)
 
-spcNotIn :: [Space] -> SpaceFilter
-spcNotIn spcs = SpaceFilter $ \spc -> L.notElem spc spcs
+provNotIn :: [Province] -> ProvinceFilter
+provNotIn provs = ProvinceFilter $ \prov -> L.notElem prov provs
 
-spcIn :: [Space] -> SpaceFilter
-spcIn spcs = SpaceFilter $ \spc -> L.elem spc spcs
+provIn :: [Province] -> ProvinceFilter
+provIn provs = ProvinceFilter $ \prov -> L.elem prov provs
 
-controlledSpaces :: Country -> BState -> [Space]
-controlledSpaces c = M.keys . M.filter (== c) . controllers >=> S.toList . areaMembers
+controlledProvinces :: Country -> BState -> [Province]
+controlledProvinces c = join . fmap (NE.toList . areaProvinces . fst)
+                      . filter ((==) c . snd) . M.toList . controllers
 
-isControlled :: Country -> BState -> SpaceFilter
-isControlled country = spcIn . controlledSpaces country
+isControlled :: Country -> BState -> ProvinceFilter
+isControlled country = provIn . controlledProvinces country
 
-countryHomeSCs :: Country -> BState -> [Space]
-countryHomeSCs c = M.keys . M.filter (HomeSupply c ==)
-                 . boardSupplyCenters . gameBoard >=> S.toList . areaMembers
+countryHomeSCs :: Country -> BState -> [Province]
+countryHomeSCs c = fmap fst . filter ((==) (HomeSupply c) . snd)
+                 . M.toList . boardSupplyCenters . gameBoard
 
-isHomeSupply :: Country -> BState -> SpaceFilter
-isHomeSupply country = spcIn . countryHomeSCs country
+isHomeSupply :: Country -> BState -> ProvinceFilter
+isHomeSupply country = provIn . countryHomeSCs country
 
-countryOccupiesSpace :: Country -> BState -> SpaceFilter
-countryOccupiesSpace country =
-  spcIn . M.keys . M.filter ((==) country . unitCountry) . occupiers
+countryOccupiesProvince :: Country -> BState -> ProvinceFilter
+countryOccupiesProvince country =
+  provIn . M.keys . M.filter ((==) country . unitCountry) . occupiers
 
--- spaces that the country can build new units at
-buildableSpaceFilter :: BState -> Country -> SpaceFilter
-buildableSpaceFilter state country = unOccupied state
+-- provinces that the country can build new units at
+buildableProvinceFilter :: BState -> Country -> ProvinceFilter
+buildableProvinceFilter state country = unOccupied state
                                    <> isHomeSupply country state
                                    <> isControlled country state
 
--- filter for spaces at which a hold can be supported (for the given supporter and holder type)
-supportableHoldFilter :: BState -> Space -> Unit -> Unit -> SpaceFilter
+-- filter for provinces at which a hold can be supported (for the given supporter and holder type)
+supportableHoldFilter :: BState -> Province -> Unit -> Unit -> ProvinceFilter
 supportableHoldFilter state supporterAt supporter holder = 
   routeForUnitExists (gameBoard state) supporterAt supporter <> occupiedBy state holder
 
-supportableAttackFilter :: BState -> Space -> Unit -> Space -> Unit -> SpaceFilter
+supportableAttackFilter :: BState -> Province -> Unit -> Province -> Unit -> ProvinceFilter
 supportableAttackFilter state attackFrom attacker supporterFrom supporter =
      routeForUnitExists (gameBoard state) attackFrom attacker
   <> routeForUnitExists (gameBoard state) supporterFrom supporter
 
--- existing as in the unit occupies a given space
-parseExistingUnitAndSpace :: BState -> UnitFilter -> Parser (Unit, Space)
-parseExistingUnitAndSpace state uf = do
+-- existing as in the unit occupies a given province
+parseExistingUnitAndProvince :: BState -> UnitFilter -> Parser (Unit, Province)
+parseExistingUnitAndProvince state uf = do
   unit <- parseUnitWith uf state <* space
-  spc <- parseSpaceWith (gameBoard state) (occupiedBy state unit)
-  return (unit, spc)
+  prov <- parseProvinceWith (gameBoard state) (occupiedBy state unit)
+  return (unit, prov)
 
 
 -- route
@@ -212,26 +213,26 @@ routeForUnitType _     _         = False
 convoyRoute :: RouteType -> Bool
 convoyRoute rt = rt == FleetOnly || rt == ConvoyOnly
 
-routeWithTypeExists :: Board -> Space -> Space -> (RouteType -> Bool) -> Bool
-routeWithTypeExists board spc1 spc2 validRoute =
-  maybe False validRoute (M.lookup (Route spc1 spc2) . boardRoutes $ board)
+routeWithTypeExists :: Board -> Province -> Province -> (RouteType -> Bool) -> Bool
+routeWithTypeExists board prov1 prov2 validRoute =
+  maybe False validRoute (M.lookup (Route prov1 prov2) . boardRoutes $ board)
 
-regularRouteExists :: Board -> Space -> SpaceFilter
-regularRouteExists board spc1 = SpaceFilter $
-  \spc2 -> routeWithTypeExists board spc1 spc2 (ConvoyOnly /=)
+regularRouteExists :: Board -> Province -> ProvinceFilter
+regularRouteExists board prov1 = ProvinceFilter $
+  \prov2 -> routeWithTypeExists board prov1 prov2 (ConvoyOnly /=)
 
-routeForUnitExists :: Board -> Space -> Unit -> SpaceFilter
-routeForUnitExists board spc1 unit = SpaceFilter $
-  \spc2 -> routeWithTypeExists board spc1 spc2 (routeForUnitType (unitType unit))
+routeForUnitExists :: Board -> Province -> Unit -> ProvinceFilter
+routeForUnitExists board prov1 unit = ProvinceFilter $
+  \prov2 -> routeWithTypeExists board prov1 prov2 (routeForUnitType (unitType unit))
 
-convoyRouteExists :: Board -> Space -> SpaceFilter
-convoyRouteExists board spc1 = SpaceFilter $ \spc2 -> routeWithTypeExists board spc1 spc2 convoyRoute
+convoyRouteExists :: Board -> Province -> ProvinceFilter
+convoyRouteExists board prov1 = ProvinceFilter $ \prov2 -> routeWithTypeExists board prov1 prov2 convoyRoute
 
-convoyPathFilter :: BState -> [Space] -> Space -> SpaceFilter
-convoyPathFilter state prevs spcFrom = spaceTypeFilter Ocean
-  <> convoyRouteExists (gameBoard state) spcFrom
+convoyPathFilter :: BState -> [Province] -> Province -> ProvinceFilter
+convoyPathFilter state prevs provFrom = provinceTypeFilter Ocean
+  <> convoyRouteExists (gameBoard state) provFrom
   <> occupied state
-  <> spcNotIn prevs
+  <> provNotIn prevs
 
 
 -- phase
@@ -250,165 +251,172 @@ parseAnyPhase = Phase <$> (parseAnySeason <* space) <*> (fromIntegral <$> intege
 parseSupplyStatus :: Parser (Maybe SupplyOrigin)
 parseSupplyStatus = optional (string " [SC, " *> parseAnySupplyOrigin <* string "]")
 
-parseNewSpace :: Parser (Space, Maybe SupplyOrigin)
-parseNewSpace = do
-  spcName <- parseName
+parseNewProvince :: Parser (Province, Maybe SupplyOrigin)
+parseNewProvince = do
+  provName <- parseName
   char ',' *> space
-  spcType <- parseAnySpaceType
+  provType <- parseAnyProvinceType
   supplyStatus <- parseSupplyStatus
-  return (Space spcName spcType, supplyStatus)
+  return (Province provName provType, supplyStatus)
 
-parseTrivialArea :: Parser Space -> Parser Area
-parseTrivialArea sp = do
-  spc <- sp
-  return $ Area (spaceName spc) (S.singleton spc) True
+parseMultipleProvinces :: [Province] -> [Province] -> Parser [Province]
+parseMultipleProvinces notParsed parsed = do
+  prov <- choice . fmap provinceToProvinceNameParser $ notParsed
+  isNext <- optional $ char '~'
+  case isNext of
+    Nothing  -> return $ prov:parsed
+    (Just _) -> parseMultipleProvinces (filter (prov /=) notParsed) (prov:parsed)
 
-parseNonTrivialArea :: Parser Space -> Parser Area
-parseNonTrivialArea sp = do
+parseArea :: [Province] -> Parser ([Province], Area)
+parseArea notParsed = do 
   areaName <- parseName
-  char ':' *> space
-  spcs <- sepBy1 sp (char '~') 
-  return $ Area areaName (S.fromList spcs) False
+  string ": "
+  prov <- choice . fmap provinceToProvinceNameParser $ notParsed
+  char '~'
+  provs <- parseMultipleProvinces (filter (prov /=) notParsed) []
+  return (prov:provs, Area areaName (prov :| provs))
 
-parseArea :: Parser Space -> Parser (Area, Maybe SupplyOrigin)
-parseArea sp = do
-  area <- parseTrivialArea sp <|> parseNonTrivialArea sp
-  supplyStatus <- parseSupplyStatus
-  return (area, supplyStatus)
+parseAreas :: [Province] -> Parser [Area]
+parseAreas notParsed = do
+  (parsed, area) <- parseArea notParsed
+  newline
+  isLast <- optional newline
+  case isLast of
+    Nothing  -> (area :) <$> parseAreas (notParsed L.\\ parsed)
+    (Just _) -> return [area]
 
-parseNewRoute :: [Space] -> Parser (Route, RouteType)
-parseNewRoute spcs = do
-  spcFrom <- choice . fmap spaceToSpaceNameParser $ spcs
+parseNewRoute :: [Province] -> Parser (Route, RouteType)
+parseNewRoute provs = do
+  provFrom <- choice . fmap provinceToProvinceNameParser $ provs
   char '-'
-  spcTo <- choice . fmap spaceToSpaceNameParser . L.delete spcFrom $ spcs
+  provTo <- choice . fmap provinceToProvinceNameParser . L.delete provFrom $ provs
   rType <- space *> char '[' *> parseAnyRouteType <* char ']'
-  return (Route spcFrom spcTo, rType)
+  return (Route provFrom provTo, rType)
 
-parseBoardData :: Parser ([(Space, Maybe SupplyOrigin)], [(Route, RouteType)], [(Area, Maybe SupplyOrigin)])
+parseBoardData :: Parser ([(Province, Maybe SupplyOrigin)], [(Route, RouteType)], [Area])
 parseBoardData = do
-  string "Spaces:\n"
-  spcs <- sepEndBy1 parseNewSpace newline
+  string "Provinces:\n"
+  provs <- sepEndBy1 parseNewProvince newline
   string "\nRoutes:\n"
-  routes <- sepEndBy1 (parseNewRoute . fmap fst $ spcs) newline
+  routes <- sepEndBy1 (parseNewRoute . fmap fst $ provs) newline
   string "\nAreas:\n"
-  areas <- sepEndBy1 (parseArea . choice . fmap (spaceToSpaceNameParser . fst) $ spcs) newline
-  optional newline <* eof -- allow one extra newline at the end
-  return (spcs, routes, areas)
+  areas <- parseAreas . fmap fst $ provs
+  eof
+  return (provs, routes, areas)
 
 
 -- state
-parseMaybeB :: String -> String -> Parser b -> Parser (Maybe b)
-parseMaybeB strNothing strJust p = choice [ string strNothing >> return Nothing
-                                          , string strJust >> space >> p >>= (return . Just) ]
-
-parseStateFor :: Parser b -> String -> Parser a -> Parser (a, Maybe b)
-parseStateFor bParser str aParser = do
+parseStateFor :: Parser b -> String -> Parser a -> Parser (a, b)
+parseStateFor bParser separator aParser = do
   a <- aParser
-  comma
-  mb <- parseMaybeB ("un" <> str) (str <> " by") bParser
-  return (a, mb)
+  string ", " *> string separator <* string " by "
+  b <- bParser
+  return (a, b)
 
-parseSpaceStates :: Board -> Parser (Space, Maybe Unit)
-parseSpaceStates = parseStateFor parseAnyUnit "occupied" . choice
-                 . fmap spaceToSpaceNameParser . S.toList . boardSpaces
+parseProvinceStates :: Board -> Parser (Province, Unit)
+parseProvinceStates = parseStateFor parseAnyUnit "occupied"
+                    . choice
+                    . fmap provinceToProvinceNameParser . S.toList . boardProvinces
 
-parseAreaStates :: Board -> Parser (Area, Maybe Country)
-parseAreaStates = parseStateFor parseAnyCountry "controlled" . choice
-                . fmap areaToAreaNameParser . S.toList . boardAreas
+parseAreaStates :: Board -> Parser (Area, Country)
+parseAreaStates board = parseStateFor parseAnyCountry "controlled"
+                      . choice
+                      . fmap areaToAreaNameParser . S.toList . S.map (toArea board)
+                      . boardProvinces $ board
  
 parseDislodgedUnit :: Board -> Parser DislodgedUnit
 parseDislodgedUnit board = do
   unit <- parseAnyUnit
   string " at "
-  spcAt <- parseSpaceWith board (unitTypeSpaceFilter (unitType unit))
+  provAt <- parseProvinceWith board (unitTypeProvinceFilter (unitType unit))
   string ", dislodged from "
-  spcFrom <- parseSpaceWith board (regularRouteExists board spcAt)
-  return $ DislodgedUnit unit spcAt spcFrom
+  provFrom <- parseProvinceWith board (regularRouteExists board provAt)
+  return $ DislodgedUnit unit provAt provFrom
 
-parseStateData :: Board -> Parser (Phase, [(Space, Maybe Unit)], [(Area, Maybe Country)], [DislodgedUnit])
+parseStateData :: Board -> Parser (Phase, [(Province, Unit)], [(Area, Country)], [DislodgedUnit])
 parseStateData board = do
   phase <- parseAnyPhase
   string ", status:\n"
-  string "\nSpaces:\n"
-  spaceStates <- sepEndBy1 (parseSpaceStates board) newline
+  string "\nProvinces:\n"
+  provinceStates <- sepEndBy1 (parseProvinceStates board) newline
   string "\nAreas:\n"
   areaStates <- sepEndBy1 (parseAreaStates board) newline
   string "\nDislodged units:\n"
   dislodgedUnits <- sepEndBy (parseDislodgedUnit board) newline
   optional newline <* optional newline <* eof -- allow 1-2 extra newlines at the end
-  return (phase, spaceStates, areaStates, dislodgedUnits)
+  return (phase, provinceStates, areaStates, dislodgedUnits)
   
 
 -- regular orders
-parseHold :: BState -> Unit -> Space -> Parser OrderData
+parseHold :: BState -> Unit -> Province -> Parser OrderData
 parseHold _ _ _ = string " holds" *> return Hold
 
 parseAttackStart :: Parser String
 parseAttackStart = (string " to" *> string " ") <|> string "-"
 
-parseAttack :: BState -> Unit -> Space -> Parser OrderData
+parseAttack :: BState -> Unit -> Province -> Parser OrderData
 parseAttack state attacker attackFrom = do
   parseAttackStart
-  attackTo <- parseSpaceWith (gameBoard state) (routeForUnitExists (gameBoard state) attackFrom attacker)
+  attackTo <- parseProvinceWith (gameBoard state) (routeForUnitExists (gameBoard state) attackFrom attacker)
   return $ Attack attackTo
 
-parseSuppHold :: BState -> Unit -> Space -> Parser OrderData
+parseSuppHold :: BState -> Unit -> Province -> Parser OrderData
 parseSuppHold state supporter supporterAt = do
   holder <- parseUnitWith mempty state <* space
-  holderAt <- parseSpaceWith (gameBoard state) (supportableHoldFilter state supporterAt supporter holder)
+  holderAt <- parseProvinceWith (gameBoard state) (supportableHoldFilter state supporterAt supporter holder)
   string " holds"
   return $ SuppHold holder holderAt
 
-parseSuppAttack :: BState -> Unit -> Space -> Parser OrderData
+parseSuppAttack :: BState -> Unit -> Province -> Parser OrderData
 parseSuppAttack state supporter supporterFrom = do
-  (attacker, attackFrom) <- parseExistingUnitAndSpace state mempty 
+  (attacker, attackFrom) <- parseExistingUnitAndProvince state mempty 
   parseAttackStart
-  attackTo <- parseSpaceWith (gameBoard state)
+  attackTo <- parseProvinceWith (gameBoard state)
                              (supportableAttackFilter state attackFrom attacker supporterFrom supporter)
   return $ SuppAttack attacker attackFrom attackTo
 
-parseSupport :: BState -> Unit -> Space -> Parser OrderData
-parseSupport state supporter supporterSpace = do
+parseSupport :: BState -> Unit -> Province -> Parser OrderData
+parseSupport state supporter supporterProvince = do
   string " supports" *> string " ("
-  choice [ Comb.try $ parseSuppHold   state supporter supporterSpace
-         , Comb.try $ parseSuppAttack state supporter supporterSpace ] <* char ')'
+  choice [ Comb.try $ parseSuppHold   state supporter supporterProvince
+         , Comb.try $ parseSuppAttack state supporter supporterProvince ] <* char ')'
 
-parseVias :: BState -> [Space] -> Space -> Parser [Space]
+parseVias :: BState -> [Province] -> Province -> Parser [Province]
 parseVias state prevs current = do
-  testParse <- optional $ parseSpaceWith (gameBoard state) (convoyPathFilter state prevs current) <* space
+  testParse <- optional $ parseProvinceWith (gameBoard state) (convoyPathFilter state prevs current) <* space
   case testParse of
     Nothing      -> return . reverse $ current:prevs
     Just viaNext -> parseVias state (current:prevs) viaNext
 
-parseAttackViaConvoy :: BState -> Unit -> Space -> Parser OrderData
+parseAttackViaConvoy :: BState -> Unit -> Province -> Parser OrderData
 parseAttackViaConvoy state attacker attackerFrom = do
   string " via" *> space
-  spcVia <- parseSpaceWith (gameBoard state) (convoyPathFilter state [] attackerFrom) <* space
-  spcVias <- parseVias state [attackerFrom] spcVia
+  provVia <- parseProvinceWith (gameBoard state) (convoyPathFilter state [] attackerFrom) <* space
+  provVias <- parseVias state [attackerFrom] provVia
   string "to" *> space
-  spcTo <- parseSpaceWith (gameBoard state) (convoyRouteExists (gameBoard state) (NE.last $ spcVia :| spcVias))
-  return $ AttackViaConvoy (ConvoyPath (spcVia :| spcVias) spcTo)
+  provTo <- parseProvinceWith (gameBoard state) (convoyRouteExists (gameBoard state) (NE.last $ provVia :| provVias))
+  return $ AttackViaConvoy (ConvoyPath (provVia :| provVias) provTo)
 
-parseConvoy :: BState -> Unit -> Space -> Parser OrderData
-parseConvoy state convoyer convoyerSpace = do
+parseConvoy :: BState -> Unit -> Province -> Parser OrderData
+parseConvoy state convoyer convoyerProvince = do
   string " convoys" *> space
-  (convoyee, convoyeeFrom) <- parseExistingUnitAndSpace state (unitTypeFilter Army)
+  (convoyee, convoyeeFrom) <- parseExistingUnitAndProvince state (unitTypeFilter Army)
   space *> string "to" *> space
-  convoyeeTo <- parseSpaceWith (gameBoard state) (unitTypeSpaceFilter Army)
+  convoyeeTo <- parseProvinceWith (gameBoard state) (unitTypeProvinceFilter Army)
   return $ Convoy convoyee convoyeeFrom convoyeeTo
 
-parseOrderData :: BState -> Unit -> Space -> Parser OrderData
-parseOrderData state unit spc =
-  choice . fmap (\parser -> parser state unit spc) $ parserList where
+parseOrderData :: BState -> Unit -> Province -> Parser OrderData
+parseOrderData state unit prov =
+  choice . fmap (\parser -> parser state unit prov) $ parserList where
     parserList = case unitType unit of 
       Army  -> [parseHold, parseAttack, parseSupport, parseAttackViaConvoy]
       Fleet -> [parseHold, parseAttack, parseSupport, parseConvoy]
 
 parseOrder :: BState -> Parser Order
 parseOrder state = do
-  (unit, spc) <- parseExistingUnitAndSpace state mempty
-  orderData <- parseOrderData state unit spc
-  return $ Order unit spc orderData
+  (unit, prov) <- parseExistingUnitAndProvince state mempty
+  orderData <- parseOrderData state unit prov
+  return $ Order unit prov orderData
 
 parseOrders :: BState -> Parser [Order]
 parseOrders state = sepEndBy1 (parseOrder state) newline <* eof
@@ -421,34 +429,34 @@ dislodgedUnitParser = choice . fmap (Comb.try . unitToUnitParser) . S.toList . S
 filterDislodgedUnit :: Unit -> Set DislodgedUnit -> Set DislodgedUnit
 filterDislodgedUnit unit = S.filter ((==) unit . dislodgedUnit)
 
-dislodgedAtFilter :: Set DislodgedUnit -> Unit -> SpaceFilter
-dislodgedAtFilter dus unit = SpaceFilter
-  (\spc -> S.member spc . S.map dislodgedAt . filterDislodgedUnit unit $ dus)
+dislodgedAtFilter :: Set DislodgedUnit -> Unit -> ProvinceFilter
+dislodgedAtFilter dus unit = ProvinceFilter
+  (\prov -> S.member prov . S.map dislodgedAt . filterDislodgedUnit unit $ dus)
 
-filterDislodgedAt :: Space -> Set DislodgedUnit -> Set DislodgedUnit
-filterDislodgedAt spc = S.filter ((==) spc . dislodgedAt)
+filterDislodgedAt :: Province -> Set DislodgedUnit -> Set DislodgedUnit
+filterDislodgedAt prov = S.filter ((==) prov . dislodgedAt)
 
-dislodgedFromFilter :: Set DislodgedUnit -> Space -> SpaceFilter
-dislodgedFromFilter dus spc1 = SpaceFilter
-  (\spc2 -> not . S.member spc2 . S.map dislodgedFrom . filterDislodgedAt spc1 $ dus)
+dislodgedFromFilter :: Set DislodgedUnit -> Province -> ProvinceFilter
+dislodgedFromFilter dus prov1 = ProvinceFilter
+  (\prov2 -> not . S.member prov2 . S.map dislodgedFrom . filterDislodgedAt prov1 $ dus)
 
-retreatRouteFilter :: BState -> Space -> Unit -> SpaceFilter
-retreatRouteFilter state spc unit = unOccupied state
-                                      <> routeForUnitExists (gameBoard state) spc unit
-                                      <> dislodgedFromFilter (dislodgedUnits state) spc
+retreatRouteFilter :: BState -> Province -> Unit -> ProvinceFilter
+retreatRouteFilter state prov unit = unOccupied state
+                                      <> routeForUnitExists (gameBoard state) prov unit
+                                      <> dislodgedFromFilter (dislodgedUnits state) prov
 
-parseRetreat :: BState -> Unit -> Space -> Parser RetreatOrder
-parseRetreat state unit spc = do
+parseRetreat :: BState -> Unit -> Province -> Parser RetreatOrder
+parseRetreat state unit prov = do
   string "retreats to "
-  RORetreat unit spc <$> parseSpaceWith (gameBoard state) (retreatRouteFilter state spc unit)
+  RORetreat unit prov <$> parseProvinceWith (gameBoard state) (retreatRouteFilter state prov unit)
 
-parseDisband :: Unit -> Space -> Parser RetreatOrder
-parseDisband unit spc = string "disbands" *> return (RODisband unit spc)
+parseDisband :: Unit -> Province -> Parser RetreatOrder
+parseDisband unit prov = string "disbands" *> return (RODisband unit prov)
 
 parseRetreatOrder :: BState -> Parser RetreatOrder
 parseRetreatOrder state = do
   unit <- dislodgedUnitParser (dislodgedUnits state) <* space
-  dislodgedAt <- parseSpaceWith (gameBoard state) (dislodgedAtFilter (dislodgedUnits state) unit)
+  dislodgedAt <- parseProvinceWith (gameBoard state) (dislodgedAtFilter (dislodgedUnits state) unit)
   space
   choice . fmap (\parser -> parser unit dislodgedAt) $ [ parseDisband, parseRetreat state ]
 
@@ -457,27 +465,27 @@ parseRetreatOrders state = sepEndBy1 (parseRetreatOrder state) newline <* eof
 
 
 -- build/disband orders
-unitTypeForSpaceType :: SpaceType -> [UnitType]
-unitTypeForSpaceType Land = [Army]
-unitTypeForSpaceType Ocean = [Fleet]
-unitTypeForSpaceType Coast = [Army,Fleet]
+unitTypeForProvinceType :: ProvinceType -> [UnitType]
+unitTypeForProvinceType Land = [Army]
+unitTypeForProvinceType Ocean = [Fleet]
+unitTypeForProvinceType Coast = [Army,Fleet]
 
 
 parseBOBuild :: BState -> Country -> Parser BuildOrder
 parseBOBuild state country' = do
   country <- parseSpecificCountry country'
   string " builds "
-  spc <- parseSpaceWith (gameBoard state) (buildableSpaceFilter state country)
+  prov <- parseProvinceWith (gameBoard state) (buildableProvinceFilter state country)
   space
-  ut <- choice . fmap parseSpecificUnitType . unitTypeForSpaceType . spaceType $ spc
-  return $ BOBuild country spc ut
+  ut <- choice . fmap parseSpecificUnitType . unitTypeForProvinceType . provinceType $ prov
+  return $ BOBuild country prov ut
 
 parseBODisband :: BState -> Country -> Parser BuildOrder
 parseBODisband state country' = do
   country <- parseSpecificCountry country'
   string " disbands "
-  spc <- parseSpaceWith (gameBoard state) (countryOccupiesSpace country state)
-  return $ BODisband country spc
+  prov <- parseProvinceWith (gameBoard state) (countryOccupiesProvince country state)
+  return $ BODisband country prov
 
 getBOParser :: BState -> Country -> Int -> Maybe (Parser BuildOrder)
 getBOParser state c i = case compare 0 i of

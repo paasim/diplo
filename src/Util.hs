@@ -3,10 +3,23 @@ module Util where
 
 import Error
 import RIO
+import qualified RIO.List as L
 import qualified RIO.Map as M
 import qualified RIO.Set as S
 
 -- utility functions
+showPair :: (Show a, Show b) => (a, b) -> String
+showPair (a, b) = show a <> " " <> show b
+
+swap :: (a, b) -> (b, a)
+swap (a, b) = (b, a)
+
+ungroupSnd :: [(a, [b])] -> [(a, b)]
+ungroupSnd l = l >>= sequenceA
+
+ungroupFst :: [([a], b)] -> [(a, b)]
+ungroupFst = fmap swap . join . fmap sequenceA . fmap swap -- unnests [prov]
+
 toListChecker :: (a -> Validated a) -> [a] -> Validated [a]
 toListChecker f = foldr (\x -> (<*>) ((:) <$> f x)) (Valid [])
 
@@ -39,7 +52,7 @@ insertNew aNew ((a,i):rest) = case compare aNew a of
   GT -> (a,i) : insertNew aNew rest
 
 counts :: Ord a => [a] -> [(a, Int)]
-counts = foldr insertNew []
+counts = foldr insertNew [] . L.sort
 
 getDuplicates :: Ord a => [a] -> Set a
 getDuplicates = S.fromList . fmap fst . filter (\(a, i) -> i > 1) . counts
@@ -47,12 +60,8 @@ getDuplicates = S.fromList . fmap fst . filter (\(a, i) -> i > 1) . counts
 getUniques :: Ord a => [a] -> [a]
 getUniques = fmap fst . counts
 
-maybeOutsidePair :: (a, Maybe b) -> Maybe (a, b)
-maybeOutsidePair (a, Just b) = Just (a, b)
-maybeOutsidePair _ = Nothing
-
 filterJust :: [(a, Maybe b)] -> [(a, b)]
-filterJust = catMaybes . fmap maybeOutsidePair
+filterJust = catMaybes . fmap sequenceA
 
 uncurry2 :: (a -> b -> c) -> (a, b) -> c
 uncurry2 f (a,b) = f a b

@@ -55,7 +55,7 @@ $ # Validate generated state - this prints the state back to the user if the fil
 $ diplo-exe state check state.txt
 Spring 1901, status:
 
-Spaces:
+Provinces:
 Tri, occupied by Austria Fleet
 Bud, occupied by Austria Army
 Vie, occupied by Austria Army
@@ -85,7 +85,7 @@ Germany Fleet Kie to Den
 Germany Army Ber to Kie
 
 
-$ # Typo in the unit/space, Austria has armies only in Bud and Vie
+$ # Typo in the unit/province, Austria has armies only in Bud and Vie
 $ cat order_error1.txt
 Aus F Vie-Gal
 $ diplo-exe orders check orders2.txt
@@ -134,7 +134,7 @@ $ mv state4.txt state.txt
 $ cat state.txt
 Spring 1902, status:
 
-Spaces:
+Provinces:
 Tri, occupied by Austria Fleet
 Ven, occupied by Austria Fleet
 Bud, occupied by Austria Army
