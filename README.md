@@ -1,5 +1,7 @@
 # diplo
 
+[![Build Status](https://travis-ci.org/paasim/diplo.svg?branch=master)](https://travis-ci.org/paasim/diplo)
+
 A haskell implementation of a [diplomacy] order checker. Can be used to validate and execute orders. Also contains functionality to initialize and validate the board and the game state.
 
 Does not contain functionality to resolve which orders get executed and which do not (due to another order with more supporting units for example).
